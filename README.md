@@ -335,7 +335,6 @@ mcp-logger/
 ├── CLAUDE.md                        # Claude Code project instructions
 ├── test/                            # Test files
 │   ├── test-frontend.html           # Full integration test
-│   ├── test-simple.html             # Basic console logging test
 │   ├── test-frontend-simulation.js  # Backend test simulation
 │   └── test-spam-protection.js      # Rate limiting test
 └── README.md                        # This file
