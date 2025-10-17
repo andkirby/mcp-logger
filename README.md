@@ -16,32 +16,43 @@ The Browser Logging System consists of three main components:
 
 ```mermaid
 graph TB
-    subgraph "Logger System"
-        LS["Logger Server"]
-        MS["MCP Server"]
+    subgraph "Your Applications"
+        app1["Web App"]
+        app2["Mobile App"]
+        app3["Backend API"]
     end
 
-    user["Developer"]
-    frontend["Frontend (or Backend) Application"]
-    claude["AI Client"]
+    subgraph "Browser Logger System"
+        logger["Logging System"]
+    end
 
-    user --> |"interacts"| frontend
-    frontend -->|"HTTP POST"| LS
-    LS -->|"SSE"| MS
-    MS -->|"STDIO"| claude
+    dev["Developer"]
+    ai["AI Assistant"]
 
-    user -->|"ask: 'read logs'"| claude
-    claude -->|"get_logs tool"| MS
-    MS -->|"HTTP GET"| LS
+    %% Your apps send logs to the system
+    app1 -->|"logs"| logger
+    app2 -->|"logs"| logger
+    app3 -->|"logs"| logger
 
-    classDef system fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-    classDef external fill:#f5f5f5,stroke:#666,stroke-width:1px
+    %% You interact with AI to get insights
+    dev -->|"asks about issues"| ai
+    ai -->|"fetches logs"| logger
+    ai -->|"provides insights"| dev
 
-    class LS,MS system
-    class user,frontend,claude external
+    classDef yourApp fill:#e8f5e8,stroke:#2e7d32
+    classDef logger fill:#e1f5fe,stroke:#01579b
+    classDef person fill:#fff3e0,stroke:#f57c00
+
+    class app1,app2,app3 yourApp
+    class logger logger
+    class dev,ai person
 ```
 
-Read more in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+**How it works:**
+1. Your applications send logs to the centralized logging system
+2. You ask your AI assistant about issues or problems
+3. AI retrieves and analyzes logs from any of your applications
+4. You get actionable insights back from your AI assistant
 
 ## 🚀 Quick Start (5-Minute Setup)
 
