@@ -1,6 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Browser Logger System - Integration Test</title>
     <style>
         body {
@@ -61,11 +63,12 @@
     <script>
         // Enable logging BEFORE loading logger script
         window.MCP_LOGGING_ENABLED = true;
+        window.MCP_LOGGING_APP_NAME = 'test-frontend-app';  // REQUIRED: Set app name
         window.MCP_LOGGING_BACKEND_URL = 'http://localhost:22345';
         window.MCP_LOGGING_BUFFER_SIZE = 50;
         window.MCP_LOGGING_BATCH_INTERVAL = 100;
     </script>
-    <script src="mcp-logger.js"></script>
+    <script src="http://localhost:22345/mcp-logger.js"></script>
 </head>
 <body>
     <h1>🧪 Browser Logger System - Integration Test</h1>

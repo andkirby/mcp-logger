@@ -523,6 +523,12 @@ Comments:
 
 Environment Variables:
   FILTER_APP=app-name    Set default app for get_logs (makes app parameter optional)
+  
+Test with MCP inspector:
+
+  npx @modelcontextprotocol/inspector --cli \\
+    node ${scriptPath} \\
+    -e FILTER_APP=my-app --method tools/call --tool-name 'get_logs'
 
 Usage in Claude Code:
 

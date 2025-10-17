@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node logger-server.js",
     "start-backend": "node logger-server.js",
-    "start-mcp": "node browser-logs-mcp-server.js",
+    "start-mcp": "node mcp-server.js",
     "dev": "concurrently \"npm run start-backend-dev\" \"npm run start-mcp\"",
     "dev-backend": "nodemon logger-server.js",
     "start-backend-dev": "nodemon logger-server.js",
@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^0.4.0",
+    "dotenv": "^17.2.3",
     "eventsource": "^4.0.0",
     "express": "^4.18.2"
   },

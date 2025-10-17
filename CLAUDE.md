@@ -15,7 +15,7 @@ Frontend App (with mcp-logger.js)
     ↓ HTTP POST
 Backend Server (logger-server.js) :22345
     ↓ HTTP GET / SSE Stream
-MCP Server (browser-logs-sse-mcp-server.js)
+MCP Server (mcp-server.js)
     ↓ STDIO
 AI Assistant (Claude Desktop)
 ```
@@ -39,7 +39,7 @@ AI Assistant (Claude Desktop)
 - SSE streaming endpoint for real-time log delivery
 - Duplicate filtering (5-second window)
 
-**browser-logs-sse-mcp-server.js** - MCP server (Node.js)
+**mcp-server.js** - MCP server (Node.js)
 - STDIO transport for Claude Desktop integration
 - `get_logs` tool with intelligent host/namespace selection
 - SSE-based real-time log streaming with HTTP fallback
@@ -64,7 +64,7 @@ npm run dev-backend
 # Start MCP server (Terminal 2)
 npm run start-mcp
 # or
-node browser-logs-sse-mcp-server.js
+node mcp-server.js
 
 # Run both in parallel (development)
 npm run dev
@@ -113,13 +113,13 @@ MAX_LOG_ENTRIES=500           # Max logs per namespace per host
 
 ```bash
 # Show help and copy commands
-node browser-logs-sse-mcp-server.js mcp-help
+node mcp-server.js mcp-help
 
 # Basic setup (app parameter required in get_logs)
-claude mcp add FE-logs node /absolute/path/to/browser-logs-sse-mcp-server.js
+claude mcp add FE-logs node /absolute/path/to/mcp-server.js
 
 # With default app (recommended for single-app projects)
-claude mcp add FE-logs node /absolute/path/to/browser-logs-sse-mcp-server.js --env FILTER_APP=my-app
+claude mcp add FE-logs node /absolute/path/to/mcp-server.js --env FILTER_APP=my-app
 
 # Remove if needed
 claude mcp remove FE-logs
@@ -133,7 +133,7 @@ Add to config file (`~/Library/Application Support/Claude/claude_desktop_config.
   "mcpServers": {
     "browser-logs": {
       "command": "node",
-      "args": ["/absolute/path/to/mcp-logger/browser-logs-sse-mcp-server.js"],
+      "args": ["/absolute/path/to/mcp-logger/mcp-server.js"],
       "env": {
         "FILTER_APP": "my-app-name"
       }
@@ -273,7 +273,7 @@ logger.log('my-new-namespace', { custom: 'data' });
 
 **Frontend**: Edit `addConsoleLog()` in mcp-logger.js for browser logs, or pass custom data structure to `logger.log()`
 
-**Backend**: Edit `formatLogs()` in browser-logs-sse-mcp-server.js for MCP output formatting
+**Backend**: Edit `formatLogs()` in mcp-server.js for MCP output formatting
 
 ### Changing Storage Limits
 
@@ -288,7 +288,7 @@ mcp-logger/
 ├── mcp-logger.js                    # Frontend logger (browser-side)
 ├── inject-logger.js                 # Auto-loading injection script
 ├── logger-server.js                 # Backend HTTP server
-├── browser-logs-sse-mcp-server.js   # MCP server (SSE-based)
+├── mcp-server.js   # MCP server (SSE-based)
 ├── test-*.html                      # Test/demo HTML files
 ├── docs/                            # Task documentation
 │   ├── list.md                      # MVP overview
@@ -301,9 +301,6 @@ mcp-logger/
 
 Use provided test HTML files for verification:
 - `test-frontend.html` - Full integration test
-- `test-autoloading.html` - Auto-loading injection test
-- `test-simple.html` - Basic console logging test
-- `test-fallback.html` - Backend unavailability test
 
 ## Dependencies
 

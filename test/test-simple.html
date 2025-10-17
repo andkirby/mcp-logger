@@ -1,6 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simple Auto-Loading Test</title>
 </head>
 <body>
@@ -8,6 +10,9 @@
     <div id="status">Loading...</div>
 
     <script>
+        // Configure required app name before loading logger
+        window.MCP_LOGGING_APP_NAME = 'test-simple-app';
+
         // Test auto-loading by simulating the injection process
         (function() {
             const script = document.createElement('script');

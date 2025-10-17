@@ -33,7 +33,7 @@ jobs:
         run: npm install -g redoc-cli
 
       - name: Generate HTML Documentation
-        run: redoc-cli build openapi.yaml --output docs/api.html
+        run: redoc-cli build openapi.yaml --output docs/openapi.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

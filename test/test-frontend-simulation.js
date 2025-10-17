@@ -96,13 +96,17 @@ async function checkStatus() {
         const status = await response.json();
 
         console.log('📋 Backend Status:');
-        console.log(`- Total hosts: ${status.hosts.length}`);
+        console.log(`- Total apps: ${status.apps.length}`);
         console.log(`- Total logs: ${status.totalLogs}`);
 
-        status.hosts.forEach(host => {
-            console.log(`\n🏠 Host: ${host.host}`);
-            console.log(`- Total logs: ${host.totalLogs}`);
-            console.log(`- Namespaces: ${host.namespaces.map(ns => `${ns.namespace} (${ns.count})`).join(', ')}`);
+        status.apps.forEach(app => {
+            console.log(`\n📱 App: ${app.app}`);
+            console.log(`- Total logs: ${app.totalLogs}`);
+            app.hosts.forEach(host => {
+                console.log(`  🏠 Host: ${host.host}`);
+                console.log(`  - Total logs: ${host.totalLogs}`);
+                console.log(`  - Namespaces: ${host.namespaces.map(ns => `${ns.namespace} (${ns.count})`).join(', ')}`);
+            });
         });
 
         console.log('\n🔍 Testing log retrieval...');
@@ -121,7 +125,7 @@ async function testLogRetrieval() {
     try {
         // Test browser logs
         console.log('\n📝 Retrieving browser logs...');
-        const browserResponse = await fetch('http://localhost:22345/api/logs/localhost:8081/browser?lines=10');
+        const browserResponse = await fetch('http://localhost:22345/api/logs/test-simulation-app/localhost:8081/browser?lines=10');
         const browserData = await browserResponse.json();
 
         console.log(`Found ${browserData.logs.length} browser logs:`);
@@ -132,7 +136,7 @@ async function testLogRetrieval() {
 
         // Test user-actions logs
         console.log('\n👤 Retrieving user-action logs...');
-        const actionsResponse = await fetch('http://localhost:22345/api/logs/localhost:8081/user-actions?lines=10');
+        const actionsResponse = await fetch('http://localhost:22345/api/logs/test-simulation-app/localhost:8081/user-actions?lines=10');
         const actionsData = await actionsResponse.json();
 
         console.log(`Found ${actionsData.logs.length} user-action logs:`);

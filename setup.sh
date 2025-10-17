@@ -45,9 +45,6 @@ echo "✅ Dependencies installed successfully"
 mkdir -p test
 echo "✅ Created test directory"
 
-# Copy test files
-cp test-frontend.html test/ 2>/dev/null || echo "test-frontend.html already exists in test/"
-
 echo ""
 echo "🎉 Setup completed successfully!"
 echo ""

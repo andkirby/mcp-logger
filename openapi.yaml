@@ -52,7 +52,7 @@ info:
   version: 1.0.0
   contact:
     name: Browser Logger System
-    url: https://github.com/your-repo/mcp-logger
+    url: https://github.com/andkirby/mcp-logger
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
@@ -60,8 +60,7 @@ info:
 servers:
   - url: http://localhost:22345
     description: "Development server (default)"
-  - url: https://your-domain.com
-    description: Production server
+
 
 paths:
   /api/health:
@@ -592,19 +591,28 @@ paths:
 
         ## Integration
 
-        ### Server-Side Loading (Recommended)
-        ```html
-        <script src="http://localhost:22345/mcp-logger.js"></script>
-        ```
-
-        ### Manual Loading
+        ### Frontend App
         ```html
         <script>
-            window.MCP_LOGGING_ENABLED = true;
-            window.MCP_LOGGING_APP_NAME = 'my-app';
-            window.MCP_LOGGING_BACKEND_URL = 'http://localhost:22345';
+        window.MCP_LOGGING_ENABLED = true;
+        window.MCP_LOGGING_APP_NAME = 'my-app';  // REQUIRED: Set your app name
+        window.MCP_LOGGING_BACKEND_URL = 'http://localhost:22345';
+        (function() {
+            // Try to load from server first, fallback to local file
+            var script = document.createElement('script');
+            script.src = window.MCP_LOGGING_BACKEND_URL + '/mcp-logger.js';
+            script.onerror = function() {
+                // Server is down, create a simple fallback logger
+                console.log('MCP Logger server offline, using local fallback');
+                window.logger = {
+                    log: function(namespace, data) {
+                        console.debug('[' + namespace + ']', data);
+                    }
+                };
+            };
+            document.head.appendChild(script);
+        })();
         </script>
-        <script src="/path/to/mcp-logger.js"></script>
         ```
 
         ## Configuration Options
