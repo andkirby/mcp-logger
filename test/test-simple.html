@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Auto-Loading Test</title>
+</head>
+<body>
+    <h1>Simple Auto-Loading Test</h1>
+    <div id="status">Loading...</div>
+
+    <script>
+        // Test auto-loading by simulating the injection process
+        (function() {
+            const script = document.createElement('script');
+            script.src = 'http://localhost:22345/mcp-logger.js';
+            script.async = true;
+
+            script.onload = function() {
+                const status = document.getElementById('status');
+
+                if (window.BrowserLogger) {
+                    status.innerHTML = '✅ BrowserLogger loaded successfully!<br>' +
+                                     'Backend URL: ' + window.BrowserLogger.config.backendUrl + '<br>' +
+                                     'Host: ' + window.BrowserLogger.host + '<br>' +
+                                     'Active: ' + window.BrowserLogger.isActive + '<br>' +
+                                     '<button onclick="testLog()">Test Logging</button>';
+
+                    console.log('Auto-loading test successful!');
+                } else {
+                    status.innerHTML = '❌ BrowserLogger not loaded';
+                }
+            };
+
+            script.onerror = function() {
+                document.getElementById('status').innerHTML = '❌ Failed to load script';
+            };
+
+            document.head.appendChild(script);
+        })();
+
+        function testLog() {
+            if (window.logger) {
+                window.logger.log('simple-test', {
+                    message: 'Test from simple auto-loading',
+                    timestamp: Date.now()
+                });
+                console.log('Log sent successfully!');
+            }
+        }
+    </script>
+</body>
+</html>

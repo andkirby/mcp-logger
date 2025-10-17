@@ -1,0 +1,1025 @@
+openapi: 3.1.0
+info:
+  title: Browser Logger System API
+  description: |
+    A comprehensive HTTP API for collecting, storing, and retrieving browser logs in real-time.
+
+    The Browser Logger System provides a lightweight infrastructure for capturing frontend console logs and application events, making them accessible via HTTP endpoints and Server-Sent Events (SSE).
+
+    ## Architecture Overview
+
+    The system consists of three main components:
+
+    1. **Frontend Logger** (`mcp-logger.js`) - Captures browser console logs and application events
+    2. **Backend Server** (this API) - HTTP server with in-memory log storage
+    3. **MCP Server** - Integrates with AI assistants via Model Context Protocol
+
+    ## Key Features
+
+    - **Real-time log collection** via HTTP POST endpoints
+    - **Multi-application support** with isolated log storage
+    - **Multi-host tracking** for different frontend environments
+    - **Namespace isolation** for organizing log types
+    - **Server-Sent Events (SSE)** for real-time log streaming
+    - **Duplicate filtering** to prevent log spam
+    - **Rate limiting** for performance protection
+    - **In-memory storage** with configurable limits
+
+    ## Quick Start
+
+    1. **Start the server**: The API runs on `http://localhost:22345` by default
+    2. **Submit logs**: POST to `/api/logs/submit` with your log data
+    3. **Retrieve logs**: GET from `/api/logs/:app/:host/:namespace`
+    4. **Stream logs**: Connect to `/api/logs/stream` for real-time updates
+
+    ## Data Model
+
+    ### Applications
+    - Identified by the `app` parameter
+    - Can have multiple frontend hosts
+    - Each host maintains separate log namespaces
+
+    ### Hosts
+    - Frontend application origins (e.g., `localhost:3000`)
+    - Tracked separately within each application
+    - Maintain independent log storage
+
+    ### Namespaces
+    - Logical groupings for different log types
+    - Common namespaces: `browser`, `user-actions`, `api-calls`, `performance`
+    - Each namespace has independent log storage limits
+
+  version: 1.0.0
+  contact:
+    name: Browser Logger System
+    url: https://github.com/your-repo/mcp-logger
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:22345
+    description: "Development server (default)"
+  - url: https://your-domain.com
+    description: Production server
+
+paths:
+  /api/health:
+    get:
+      tags:
+        - System
+      summary: Health check endpoint
+      description: |
+        Returns the current health status of the logging server including uptime, memory usage, and active applications.
+
+        Use this endpoint to verify that the server is running and to monitor system health.
+      operationId: getHealth
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                basic:
+                  summary: Basic health check
+                  value:
+                    status: ok
+                    timestamp: 1760710393149
+                    uptime: 1281.659557125
+                    memory:
+                      rss: 38502400
+                      heapTotal: 12353536
+                      heapUsed: 10133176
+                      external: 2221810
+                      arrayBuffers: 44172
+                    activeApps: 3
+
+  /api/logs/status:
+    get:
+      tags:
+        - System
+      summary: Get system status and available applications
+      description: |
+        Returns a comprehensive overview of all applications, hosts, and namespaces currently stored in the system.
+
+        This endpoint is useful for discovering what data is available and for monitoring system activity.
+
+        The response includes:
+        - All registered applications
+        - Hosts for each application
+        - Namespaces for each host
+        - Log counts and activity timestamps
+      operationId: getSystemStatus
+      responses:
+        '200':
+          description: System status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemStatusResponse'
+              examples:
+                basic:
+                  summary: System status with multiple applications
+                  value:
+                    apps:
+                      - app: test-app
+                        totalLogs: 25
+                        hosts:
+                          - host: localhost:3000
+                            totalLogs: 25
+                            namespaces:
+                              - namespace: browser
+                                count: 15
+                              - namespace: user-actions
+                                count: 10
+                            lastActivity: 1760710242463
+                            connectedAt: 1760709923339
+                        lastActivity: 1760710242463
+                        connectedAt: 1760709923339
+                    totalLogs: 25
+                    serverTime: 1760710394935
+                    uptime: 1283.446086833
+
+  /api/logs/submit:
+    post:
+      tags:
+        - Logs
+      summary: Submit log entries
+      description: |
+        Submit one or more log entries to be stored in the system.
+
+        This is the primary endpoint for frontend applications to send logs to the backend server.
+
+        ## Request Format
+
+        The request body must contain:
+        - `app`: Application identifier (required)
+        - `host`: Frontend host origin (required)
+        - `logs`: Object with namespace keys and log data (required)
+
+        ## Log Namespaces
+
+        ### Browser Logs (`browser`)
+        Array of console log entries with the following structure:
+        ```json
+        {
+          "level": "INFO|ERROR|WARN|LOG|DEBUG",
+          "message": "Log message",
+          "source": "file.js:line",
+          "timestamp": 1760710400000
+        }
+        ```
+
+        ### Application Logs (custom namespaces)
+        Custom data objects for application-specific events:
+        ```json
+        {
+          "action": "button_click",
+          "element": "submit-btn",
+          "metadata": { "key": "value" }
+        }
+        ```
+
+        ## Rate Limiting
+
+        - **Localhost**: 200 requests per 10 seconds
+        - **Remote**: 1000 requests per minute
+        - Duplicate filtering is applied to prevent log spam
+
+        ## Response Types
+
+        - `success`: Logs were stored successfully
+        - `skipped`: All logs were filtered as duplicates
+      operationId: submitLogs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogSubmissionRequest'
+            examples:
+              browser_logs:
+                summary: Browser console logs
+                value:
+                  app: my-frontend-app
+                  host: localhost:3000
+                  logs:
+                    browser:
+                      - level: INFO
+                        message: User logged in successfully
+                        source: auth.js:45
+                        timestamp: 1760710400000
+                      - level: ERROR
+                        message: Failed to load user data
+                        source: api.js:123
+                        timestamp: 1760710401000
+              mixed_logs:
+                summary: Mixed browser and application logs
+                value:
+                  app: my-frontend-app
+                  host: localhost:3000
+                  logs:
+                    browser:
+                      - level: INFO
+                        message: Application initialized
+                        source: app.js:10
+                        timestamp: 1760710400000
+                    user-actions:
+                      action: page_view
+                      page: /dashboard
+                      timestamp: 1760710400000
+                    api-calls:
+                      endpoint: /api/users
+                      method: GET
+                      status: 200
+                      duration: 150
+                      timestamp: 1760710400000
+      responses:
+        '200':
+          description: Logs processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogSubmissionResponse'
+              examples:
+                success:
+                  summary: Logs stored successfully
+                  value:
+                    status: success
+                    stored: 3
+                    filtered: 0
+                    app: my-frontend-app
+                    host: localhost:3000
+                    timestamp: 1760710406678
+                skipped:
+                  summary: All logs filtered as duplicates
+                  value:
+                    status: skipped
+                    reason: All logs filtered as duplicates or spam
+                    app: my-frontend-app
+                    host: localhost:3000
+                    timestamp: 1760710406678
+        '400':
+          description: Invalid request format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                missing_fields:
+                  summary: Missing required fields
+                  value:
+                    error: "Missing required fields: app, host, logs"
+                invalid_logs:
+                  summary: Invalid logs format
+                  value:
+                    error: "logs must be an object with namespace keys"
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitError'
+              examples:
+                rate_limited:
+                  summary: Rate limit exceeded
+                  value:
+                    error: Too many requests
+                    retryAfter: 30
+                    requestCount: 201
+                    limit: 200
+
+  /api/logs/{app}/{host}/{namespace}:
+    get:
+      tags:
+        - Logs
+      summary: Retrieve log entries
+      description: |
+        Retrieve log entries for a specific application, host, and namespace.
+
+        This endpoint allows filtering and pagination of log data for analysis and debugging.
+
+        ## Parameters
+
+        - `app`: Application identifier
+        - `host`: Frontend host origin (e.g., `localhost:3000`)
+        - `namespace`: Log namespace (e.g., `browser`, `user-actions`)
+        - `lines`: Number of recent entries to return (default: 20, max: 100)
+        - `filter`: Text filter for log content (case-insensitive)
+
+        ## Filtering
+
+        The filter parameter searches through:
+        - **Browser logs**: Message content
+        - **Application logs**: JSON stringified data
+
+        ## Pagination
+
+        Logs are returned in reverse chronological order (newest first).
+        Use the `lines` parameter to control the number of entries returned.
+      operationId: getLogs
+      parameters:
+        - name: app
+          in: path
+          required: true
+          description: Application identifier
+          schema:
+            type: string
+          examples:
+            app_id:
+              summary: Application identifier
+              value: my-frontend-app
+        - name: host
+          in: path
+          required: true
+          description: Frontend host origin
+          schema:
+            type: string
+          examples:
+            localhost:
+              summary: Local development server
+              value: localhost:3000
+            production:
+              summary: Production host
+              value: app.example.com
+        - name: namespace
+          in: path
+          required: true
+          description: Log namespace
+          schema:
+            type: string
+          examples:
+            browser:
+              summary: Browser console logs
+              value: browser
+            user_actions:
+              summary: User interaction events
+              value: user-actions
+        - name: lines
+          in: query
+          description: "Number of log entries to return (max: 100)"
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          examples:
+            small:
+              summary: Small number of entries
+              value: 10
+            large:
+              summary: Large number of entries
+              value: 50
+        - name: filter
+          in: query
+          description: "Text filter for log content (case-insensitive)"
+          schema:
+            type: string
+          examples:
+            error_filter:
+              summary: Filter for error messages
+              value: error
+            api_filter:
+              summary: Filter for API-related logs
+              value: api
+      responses:
+        '200':
+          description: Log entries retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogRetrievalResponse'
+              examples:
+                browser_logs:
+                  summary: Browser console logs
+                  value:
+                    app: my-frontend-app
+                    host: localhost:3000
+                    namespace: browser
+                    logs:
+                      - timestamp: 1760710400000
+                        level: ERROR
+                        message: Network request failed
+                        source: api.js:123
+                        namespace: browser
+                        app: my-frontend-app
+                        host: localhost:3000
+                      - timestamp: 1760710399000
+                        level: INFO
+                        message: User action completed
+                        source: app.js:45
+                        namespace: browser
+                        app: my-frontend-app
+                        host: localhost:3000
+                    totalEntries: 156
+                    filtered: 2
+                    options:
+                      lines: 2
+                      filter: ""
+                    timestamp: 1760710410000
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                missing_params:
+                  summary: Missing required parameters
+                  value:
+                    error: "Missing required parameters: app, host, namespace"
+
+  /api/logs/stream:
+    get:
+      tags:
+        - Streaming
+      summary: Real-time log streaming via Server-Sent Events
+      description: |
+        Establish a Server-Sent Events (SSE) connection for real-time log streaming.
+
+        This endpoint provides a persistent connection for receiving live log updates as they are submitted to the system.
+
+        ## Connection Flow
+
+        1. Client connects to the SSE endpoint
+        2. Server sends a `connected` event
+        3. If initial parameters are provided, server sends `initial_logs` event
+        4. Server sends `new_logs` events for new log submissions
+        5. Server sends `keepalive` events every 30 seconds
+
+        ## Event Types
+
+        ### connected
+        Sent when the client first connects:
+        ```
+        event: connected
+        data: {"timestamp": 1760710413076, "message": "Connected to log stream"}
+        ```
+
+        ### initial_logs
+        Sent if initial parameters are provided:
+        ```
+        event: initial_logs
+        data: {"app": "my-app", "host": "localhost:3000", "namespace": "browser", "logs": [...]}
+        ```
+
+        ### new_logs
+        Sent when new logs are submitted:
+        ```
+        event: new_logs
+        data: {"host": "localhost:3000", "logs": {"browser": [...], "user-actions": [...]}, "timestamp": 1760710415000}
+        ```
+
+        ### keepalive
+        Sent every 30 seconds to maintain the connection:
+        ```
+        event: keepalive
+        data: {"timestamp": 1760710433076}
+        ```
+
+        ## Usage Examples
+
+        ### JavaScript Client
+        ```javascript
+        const eventSource = new EventSource('http://localhost:22345/api/logs/stream');
+
+        eventSource.addEventListener('new_logs', (event) => {
+          const data = JSON.parse(event.data);
+          console.log('New logs:', data.logs);
+        });
+        ```
+
+        ### curl Command
+        ```bash
+        curl -N "http://localhost:22345/api/logs/stream?app=my-app&frontend_host=localhost:3000&namespace=browser"
+        ```
+      operationId: streamLogs
+      parameters:
+        - name: app
+          in: query
+          description: Application identifier for initial logs
+          schema:
+            type: string
+          examples:
+            app_id:
+              summary: Application identifier
+              value: my-frontend-app
+        - name: frontend_host
+          in: query
+          description: Frontend host for initial logs
+          schema:
+            type: string
+          examples:
+            localhost:
+              summary: Local development server
+              value: localhost:3000
+        - name: namespace
+          in: query
+          description: Namespace for initial logs
+          schema:
+            type: string
+          examples:
+            browser:
+              summary: Browser console logs
+              value: browser
+        - name: lines
+          in: query
+          description: "Number of initial log entries to send (max: 100)"
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          examples:
+            small:
+              summary: Small number of initial entries
+              value: 10
+        - name: filter
+          in: query
+          description: Text filter for initial log content
+          schema:
+            type: string
+          examples:
+            error_filter:
+              summary: Filter for error messages
+              value: error
+      responses:
+        '200':
+          description: SSE connection established
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: Server-Sent Events stream
+              examples:
+                connection:
+                  summary: Initial connection events
+                  value: |
+                    event: connected
+                    data: {"timestamp":1760710413076,"message":"Connected to log stream"}
+
+                    event: initial_logs
+                    data: {"app":"my-app","host":"localhost:3000","namespace":"browser","logs":[...]}
+
+  /mcp-logger.js:
+    get:
+      tags:
+        - Client
+      summary: Download the browser logger script
+      description: |
+        Download the `mcp-logger.js` script for frontend integration.
+
+        This endpoint serves the client-side logging script with automatic configuration injection.
+
+        ## Auto-Configuration
+
+        When served from this endpoint, the script includes automatic configuration:
+        ```javascript
+        // Auto-configuration from backend server
+        (function() {
+            if (typeof window !== 'undefined') {
+                if (!window.MCP_LOGGING_BACKEND_URL) {
+                    window.MCP_LOGGING_BACKEND_URL = 'http://localhost:22345';
+                }
+                if (window.MCP_LOGGING_ENABLED === undefined) {
+                    window.MCP_LOGGING_ENABLED = true;
+                }
+            }
+        })();
+        ```
+
+        ## Integration
+
+        ### Server-Side Loading (Recommended)
+        ```html
+        <script src="http://localhost:22345/mcp-logger.js"></script>
+        ```
+
+        ### Manual Loading
+        ```html
+        <script>
+            window.MCP_LOGGING_ENABLED = true;
+            window.MCP_LOGGING_APP_NAME = 'my-app';
+            window.MCP_LOGGING_BACKEND_URL = 'http://localhost:22345';
+        </script>
+        <script src="/path/to/mcp-logger.js"></script>
+        ```
+
+        ## Configuration Options
+
+        The script can be configured before loading:
+        ```javascript
+        window.MCP_LOGGING_ENABLED = true;      // Enable/disable logging
+        window.MCP_LOGGING_APP_NAME = 'my-app'; // Application name (required)
+        window.MCP_LOGGING_BACKEND_URL = 'http://localhost:22345';
+        window.MCP_LOGGING_BUFFER_SIZE = 100;    // Buffer size
+        window.MCP_LOGGING_BATCH_INTERVAL = 100; // Batch interval (ms)
+        ```
+      operationId: getLoggerScript
+      responses:
+        '200':
+          description: Logger script with auto-configuration
+          content:
+            application/javascript:
+              schema:
+                type: string
+                description: JavaScript logger code with configuration injection
+        '404':
+          description: Logger script not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                not_found:
+                  summary: Script file not found
+                  value:
+                    error: Logger script not found
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok]
+          description: Server health status
+        timestamp:
+          type: integer
+          format: int64
+          description: "Current server timestamp (Unix milliseconds)"
+        uptime:
+          type: number
+          format: float
+          description: Server uptime in seconds
+        memory:
+          type: object
+          properties:
+            rss:
+              type: integer
+              description: Resident set size in bytes
+            heapTotal:
+              type: integer
+              description: Total heap size in bytes
+            heapUsed:
+              type: integer
+              description: Used heap size in bytes
+            external:
+              type: integer
+              description: External memory in bytes
+            arrayBuffers:
+              type: integer
+              description: Array buffer memory in bytes
+        activeApps:
+          type: integer
+          description: Number of active applications
+      required:
+        - status
+        - timestamp
+        - uptime
+        - memory
+        - activeApps
+
+    SystemStatusResponse:
+      type: object
+      properties:
+        apps:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationInfo'
+          description: List of registered applications
+        totalLogs:
+          type: integer
+          description: Total number of log entries across all applications
+        serverTime:
+          type: integer
+          format: int64
+          description: "Current server timestamp (Unix milliseconds)"
+        uptime:
+          type: number
+          format: float
+          description: Server uptime in seconds
+      required:
+        - apps
+        - totalLogs
+        - serverTime
+        - uptime
+
+    ApplicationInfo:
+      type: object
+      properties:
+        app:
+          type: string
+          description: Application identifier
+        totalLogs:
+          type: integer
+          description: Total number of logs across all hosts
+        hosts:
+          type: array
+          items:
+            $ref: '#/components/schemas/HostInfo'
+          description: List of hosts for this application
+        lastActivity:
+          type: integer
+          format: int64
+          description: "Timestamp of last activity (Unix milliseconds)"
+        connectedAt:
+          type: integer
+          format: int64
+          description: "Timestamp when application was first connected (Unix milliseconds)"
+      required:
+        - app
+        - totalLogs
+        - hosts
+        - lastActivity
+        - connectedAt
+
+    HostInfo:
+      type: object
+      properties:
+        host:
+          type: string
+          description: "Host origin (e.g., localhost:3000)"
+        totalLogs:
+          type: integer
+          description: Total number of logs across all namespaces
+        namespaces:
+          type: array
+          items:
+            $ref: '#/components/schemas/NamespaceInfo'
+          description: List of namespaces for this host
+        lastActivity:
+          type: integer
+          format: int64
+          description: "Timestamp of last activity (Unix milliseconds)"
+        connectedAt:
+          type: integer
+          format: int64
+          description: "Timestamp when host was first connected (Unix milliseconds)"
+      required:
+        - host
+        - totalLogs
+        - namespaces
+        - lastActivity
+        - connectedAt
+
+    NamespaceInfo:
+      type: object
+      properties:
+        namespace:
+          type: string
+          description: Namespace identifier
+        count:
+          type: integer
+          description: Number of log entries in this namespace
+        lastActivity:
+          type: integer
+          format: int64
+          description: Timestamp of last activity in this namespace (Unix milliseconds)
+      required:
+        - namespace
+        - count
+        - lastActivity
+
+    LogSubmissionRequest:
+      type: object
+      properties:
+        app:
+          type: string
+          description: Application identifier
+          example: my-frontend-app
+        host:
+          type: string
+          description: Frontend host origin
+          example: localhost:3000
+        logs:
+          type: object
+          description: Log data organized by namespace
+          additionalProperties:
+            oneOf:
+              - type: array
+                description: Browser console logs
+                items:
+                  $ref: '#/components/schemas/BrowserLogEntry'
+              - type: object
+                description: Application-specific log data
+                additionalProperties: true
+          example:
+            browser:
+              - level: INFO
+                message: User logged in
+                source: auth.js:45
+                timestamp: 1760710400000
+            user-actions:
+              action: button_click
+              element: submit-btn
+              timestamp: 1760710400000
+      required:
+        - app
+        - host
+        - logs
+
+    BrowserLogEntry:
+      type: object
+      properties:
+        level:
+          type: string
+          enum: [LOG, INFO, WARN, ERROR, DEBUG]
+          description: Console log level
+        message:
+          type: string
+          description: Log message
+        source:
+          type: string
+          description: "Source file and line (e.g., app.js:123)"
+        timestamp:
+          type: integer
+          format: int64
+          description: "Log timestamp (Unix milliseconds)"
+      required:
+        - level
+        - message
+      example:
+        level: ERROR
+        message: Failed to fetch user data
+        source: api.js:123
+        timestamp: 1760710400000
+
+    LogSubmissionResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, skipped]
+          description: Processing status
+        stored:
+          type: integer
+          description: Number of log entries stored
+        filtered:
+          type: integer
+          description: Number of log entries filtered out
+        app:
+          type: string
+          description: Application identifier
+        host:
+          type: string
+          description: Frontend host origin
+        timestamp:
+          type: integer
+          format: int64
+          description: "Processing timestamp (Unix milliseconds)"
+        reason:
+          type: string
+          description: "Reason for skipped status (only when status=skipped)"
+      required:
+        - status
+        - app
+        - host
+        - timestamp
+      example:
+        status: success
+        stored: 3
+        filtered: 0
+        app: my-frontend-app
+        host: localhost:3000
+        timestamp: 1760710406678
+
+    LogRetrievalResponse:
+      type: object
+      properties:
+        app:
+          type: string
+          description: Application identifier
+        host:
+          type: string
+          description: Frontend host origin
+        namespace:
+          type: string
+          description: Log namespace
+        logs:
+          type: array
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/BrowserLogEntry'
+              - $ref: '#/components/schemas/ApplicationLogEntry'
+          description: "Log entries (newest first)"
+        totalEntries:
+          type: integer
+          description: Total number of entries in storage
+        filtered:
+          type: integer
+          description: "Number of entries returned (after filtering)"
+        options:
+          type: object
+          properties:
+            lines:
+              type: integer
+              description: Number of lines requested
+            filter:
+              type: string
+              description: Filter applied
+        timestamp:
+          type: integer
+          format: int64
+          description: "Response timestamp (Unix milliseconds)"
+      required:
+        - app
+        - host
+        - namespace
+        - logs
+        - totalEntries
+        - filtered
+        - options
+        - timestamp
+
+    ApplicationLogEntry:
+      type: object
+      properties:
+        namespace:
+          type: string
+          description: Log namespace
+        app:
+          type: string
+          description: Application identifier
+        host:
+          type: string
+          description: Frontend host origin
+        data:
+          type: object
+          description: Application-specific log data
+          additionalProperties: true
+        timestamp:
+          type: integer
+          format: int64
+          description: "Log timestamp (Unix milliseconds)"
+      required:
+        - namespace
+        - app
+        - host
+        - data
+        - timestamp
+      example:
+        namespace: user-actions
+        app: my-frontend-app
+        host: localhost:3000
+        data:
+          action: button_click
+          element: submit-btn
+          metadata:
+            page: /dashboard
+        timestamp: 1760710400000
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        message:
+          type: string
+          description: Detailed error description
+      required:
+        - error
+      example:
+        error: "Missing required fields: app, host, logs"
+        message: The request body must include app, host, and logs fields
+
+    RateLimitError:
+      type: object
+      properties:
+        error:
+          type: string
+          enum: [Too many requests]
+          description: Error type
+        retryAfter:
+          type: integer
+          description: Seconds to wait before retrying
+        requestCount:
+          type: integer
+          description: Number of requests made in the current window
+        limit:
+          type: integer
+          description: Maximum requests allowed in the window
+      required:
+        - error
+        - retryAfter
+        - requestCount
+        - limit
+      example:
+        error: Too many requests
+        retryAfter: 30
+        requestCount: 201
+        limit: 200
+
+tags:
+  - name: System
+    description: System health and status endpoints
+  - name: Logs
+    description: Log submission and retrieval endpoints
+  - name: Streaming
+    description: Real-time log streaming endpoints
+  - name: Client
+    description: Client-side resources

@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Logger API - Interactive Testing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .api-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .api-section {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .api-section:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .method-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: bold;
+            margin-right: 1rem;
+            text-transform: uppercase;
+        }
+
+        .method-get { background: #48bb78; color: white; }
+        .method-post { background: #4299e1; color: white; }
+        .method-stream { background: #9f7aea; color: white; }
+
+        .endpoint-path {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 1rem;
+            color: #2d3748;
+            font-weight: 600;
+        }
+
+        .section-description {
+            color: #718096;
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.25rem;
+            font-weight: 500;
+            color: #4a5568;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #cbd5e0;
+            border-radius: 5px;
+            font-size: 0.95rem;
+            transition: border-color 0.2s ease;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #4299e1;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+        }
+
+        textarea {
+            font-family: 'Monaco', 'Menlo', monospace;
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        button {
+            background: #4299e1;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        button:hover {
+            background: #3182ce;
+        }
+
+        button:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+        }
+
+        button.secondary {
+            background: #718096;
+        }
+
+        button.secondary:hover {
+            background: #4a5568;
+        }
+
+        button.danger {
+            background: #e53e3e;
+        }
+
+        button.danger:hover {
+            background: #c53030;
+        }
+
+        .response-container {
+            margin-top: 1rem;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .response-header {
+            background: #2d3748;
+            color: white;
+            padding: 0.5rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .response-status {
+            font-weight: bold;
+        }
+
+        .status-success { color: #48bb78; }
+        .status-error { color: #f56565; }
+        .status-info { color: #63b3ed; }
+
+        .response-body {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 1rem;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.875rem;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .stream-output {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 1rem;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.875rem;
+            max-height: 400px;
+            overflow-y: auto;
+            border-radius: 5px;
+            margin-top: 1rem;
+        }
+
+        .stream-event {
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 3px;
+            border-left: 3px solid #4299e1;
+        }
+
+        .stream-event.connected { border-left-color: #48bb78; }
+        .stream-event.error { border-left-color: #f56565; }
+        .stream-event.keepalive { border-left-color: #a0aec0; }
+
+        .event-type {
+            color: #9f7aea;
+            font-weight: bold;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e2e8f0;
+            margin-bottom: 1rem;
+        }
+
+        .tab {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .tab.active {
+            border-bottom-color: #4299e1;
+            color: #4299e1;
+            font-weight: 600;
+        }
+
+        .tab:hover {
+            background: #f7fafc;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4299e1;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .status-online { background: #48bb78; }
+        .status-offline { background: #f56565; }
+
+        .config-section {
+            background: #f7fafc;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+        }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .help-text {
+            font-size: 0.875rem;
+            color: #718096;
+            margin-top: 0.25rem;
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: #718096;
+            border-top: 1px solid #e2e8f0;
+            margin-top: 3rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔍 Browser Logger API</h1>
+            <p class="subtitle">Interactive Testing & Documentation</p>
+            <p style="margin-top: 1rem; opacity: 0.8;">
+                <span class="status-indicator status-online"></span>
+                Server Status: <span id="server-status">Checking...</span>
+            </p>
+        </header>
+
+        <!-- Configuration Section -->
+        <div class="config-section">
+            <h3>⚙️ API Configuration</h3>
+            <div class="config-grid">
+                <div class="form-group">
+                    <label for="api-url">API Base URL:</label>
+                    <input type="text" id="api-url" value="http://localhost:22345">
+                </div>
+                <div class="form-group">
+                    <label for="default-app">Default App:</label>
+                    <input type="text" id="default-app" value="api-test-app">
+                </div>
+                <div class="form-group">
+                    <label for="default-host">Default Host:</label>
+                    <input type="text" id="default-host" value="localhost:3000">
+                </div>
+            </div>
+            <button onclick="checkServerHealth()">Check Server Health</button>
+            <button onclick="loadSystemStatus()" class="secondary">Load System Status</button>
+        </div>
+
+        <div class="api-grid">
+            <!-- Health Check Section -->
+            <div class="api-section">
+                <div class="section-header">
+                    <span class="method-badge method-get">GET</span>
+                    <span class="endpoint-path">/api/health</span>
+                </div>
+                <p class="section-description">Check server health and get system information including uptime, memory usage, and active applications.</p>
+
+                <button onclick="testHealthCheck()">Test Health Check</button>
+
+                <div id="health-response" class="response-container" style="display: none;">
+                    <div class="response-header">
+                        <span>Response</span>
+                        <span class="response-status status-success" id="health-status">200 OK</span>
+                    </div>
+                    <div class="response-body" id="health-body"></div>
+                </div>
+            </div>
+
+            <!-- System Status Section -->
+            <div class="api-section">
+                <div class="section-header">
+                    <span class="method-badge method-get">GET</span>
+                    <span class="endpoint-path">/api/logs/status</span>
+                </div>
+                <p class="section-description">Get comprehensive overview of all applications, hosts, namespaces, and log counts. Useful for discovering available data.</p>
+
+                <button onclick="testSystemStatus()">Get System Status</button>
+
+                <div id="status-response" class="response-container" style="display: none;">
+                    <div class="response-header">
+                        <span>Response</span>
+                        <span class="response-status status-success" id="status-response-status">200 OK</span>
+                    </div>
+                    <div class="response-body" id="status-body"></div>
+                </div>
+            </div>
+
+            <!-- Submit Logs Section -->
+            <div class="api-section">
+                <div class="section-header">
+                    <span class="method-badge method-post">POST</span>
+                    <span class="endpoint-path">/api/logs/submit</span>
+                </div>
+                <p class="section-description">Submit log entries to be stored in the system. Supports both browser console logs and custom application events.</p>
+
+                <div class="tabs">
+                    <div class="tab active" onclick="switchTab('submit', 'browser')">Browser Logs</div>
+                    <div class="tab" onclick="switchTab('submit', 'app')">Application Logs</div>
+                    <div class="tab" onclick="switchTab('submit', 'mixed')">Mixed Logs</div>
+                </div>
+
+                <div id="submit-tab-browser" class="tab-content active">
+                    <div class="form-group">
+                        <label for="submit-app">App Name:</label>
+                        <input type="text" id="submit-app" value="api-test-app">
+                        <div class="help-text">Application identifier for log organization</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="submit-host">Host:</label>
+                        <input type="text" id="submit-host" value="localhost:3000">
+                        <div class="help-text">Frontend host origin (e.g., localhost:3000)</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="browser-logs">Browser Logs (JSON):</label>
+                        <textarea id="browser-logs" rows="6">[
+  {
+    "level": "INFO",
+    "message": "User logged in successfully",
+    "source": "auth.js:45",
+    "timestamp": 1760710400000
+  },
+  {
+    "level": "WARN",
+    "message": "Deprecated API used",
+    "source": "legacy.js:123",
+    "timestamp": 1760710401000
+  }
+]</textarea>
+                    </div>
+                </div>
+
+                <div id="submit-tab-app" class="tab-content">
+                    <div class="form-group">
+                        <label for="app-logs">Application Logs (JSON):</label>
+                        <textarea id="app-logs" rows="8">{
+  "user-actions": {
+    "action": "button_click",
+    "element": "submit-btn",
+    "page": "/checkout",
+    "timestamp": 1760710400000
+  },
+  "api-calls": {
+    "endpoint": "/api/users",
+    "method": "GET",
+    "status": 200,
+    "duration": 150,
+    "timestamp": 1760710400000
+  },
+  "performance": {
+    "metric": "page_load",
+    "value": 1250,
+    "unit": "ms",
+    "timestamp": 1760710400000
+  }
+}</textarea>
+                    </div>
+                </div>
+
+                <div id="submit-tab-mixed" class="tab-content">
+                    <div class="form-group">
+                        <label for="mixed-logs">Mixed Logs (JSON):</label>
+                        <textarea id="mixed-logs" rows="10">{
+  "browser": [
+    {
+      "level": "ERROR",
+      "message": "Network request failed",
+      "source": "api.js:123",
+      "timestamp": 1760710400000
+    }
+  ],
+  "user-actions": {
+    "action": "form_submit",
+    "form": "contact",
+    "success": false,
+    "errors": ["email_required"],
+    "timestamp": 1760710400000
+  },
+  "errors": {
+    "type": "validation",
+    "message": "Required fields missing",
+    "fields": ["email"],
+    "timestamp": 1760710400000
+  }
+}</textarea>
+                    </div>
+                </div>
+
+                <button onclick="submitBrowserLogs()">Submit Browser Logs</button>
+                <button onclick="submitAppLogs()">Submit App Logs</button>
+                <button onclick="submitMixedLogs()">Submit Mixed Logs</button>
+                <button onclick="generateRandomLogs()" class="secondary">Generate Random Logs</button>
+
+                <div id="submit-response" class="response-container" style="display: none;">
+                    <div class="response-header">
+                        <span>Response</span>
+                        <span class="response-status status-success" id="submit-status">200 OK</span>
+                    </div>
+                    <div class="response-body" id="submit-body"></div>
+                </div>
+            </div>
+
+            <!-- Retrieve Logs Section -->
+            <div class="api-section">
+                <div class="section-header">
+                    <span class="method-badge method-get">GET</span>
+                    <span class="endpoint-path">/api/logs/{app}/{host}/{namespace}</span>
+                </div>
+                <p class="section-description">Retrieve log entries for specific application, host, and namespace with filtering and pagination options.</p>
+
+                <div class="form-group">
+                    <label for="retrieve-app">Application:</label>
+                    <select id="retrieve-app">
+                        <option value="api-test-app">api-test-app</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="retrieve-host">Host:</label>
+                    <select id="retrieve-host">
+                        <option value="localhost:3000">localhost:3000</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="retrieve-namespace">Namespace:</label>
+                    <select id="retrieve-namespace">
+                        <option value="browser">browser</option>
+                        <option value="user-actions">user-actions</option>
+                        <option value="api-calls">api-calls</option>
+                        <option value="performance">performance</option>
+                        <option value="errors">errors</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="retrieve-lines">Number of lines:</label>
+                    <input type="number" id="retrieve-lines" value="20" min="1" max="100">
+                </div>
+                <div class="form-group">
+                    <label for="retrieve-filter">Filter text:</label>
+                    <input type="text" id="retrieve-filter" placeholder="Search logs...">
+                </div>
+
+                <button onclick="retrieveLogs()">Retrieve Logs</button>
+                <button onclick="clearRetrieveFilters()" class="secondary">Clear Filters</button>
+
+                <div id="retrieve-response" class="response-container" style="display: none;">
+                    <div class="response-header">
+                        <span>Response</span>
+                        <span class="response-status status-success" id="retrieve-status">200 OK</span>
+                    </div>
+                    <div class="response-body" id="retrieve-body"></div>
+                </div>
+            </div>
+
+            <!-- SSE Stream Section -->
+            <div class="api-section">
+                <div class="section-header">
+                    <span class="method-badge method-stream">STREAM</span>
+                    <span class="endpoint-path">/api/logs/stream</span>
+                </div>
+                <p class="section-description">Establish Server-Sent Events connection for real-time log streaming. Receive live updates as logs are submitted.</p>
+
+                <div class="form-group">
+                    <label for="stream-app">Application (optional):</label>
+                    <select id="stream-app">
+                        <option value="">All Applications</option>
+                        <option value="api-test-app">api-test-app</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="stream-host">Host (optional):</label>
+                    <select id="stream-host">
+                        <option value="">All Hosts</option>
+                        <option value="localhost:3000">localhost:3000</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="stream-namespace">Namespace (optional):</label>
+                    <select id="stream-namespace">
+                        <option value="">All Namespaces</option>
+                        <option value="browser">browser</option>
+                        <option value="user-actions">user-actions</option>
+                        <option value="api-calls">api-calls</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="stream-lines">Initial lines:</label>
+                    <input type="number" id="stream-lines" value="10" min="0" max="100">
+                    <div class="help-text">Number of recent logs to send initially</div>
+                </div>
+
+                <button onclick="startStream()" id="stream-start-btn">Start Stream</button>
+                <button onclick="stopStream()" id="stream-stop-btn" disabled>Stop Stream</button>
+                <button onclick="clearStream()" class="secondary">Clear Output</button>
+
+                <div id="stream-output" class="stream-output" style="display: none;">
+                    <div style="color: #9f7aea; font-weight: bold; margin-bottom: 1rem;">
+                        🌊 Server-Sent Events Stream
+                    </div>
+                    <div id="stream-events"></div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Browser Logger System API - Interactive Testing Tool</p>
+            <p style="margin-top: 0.5rem; font-size: 0.875rem;">
+                Documentation: <a href="/API_DOCUMENTATION.md" style="color: #4299e1;">API Documentation</a> |
+                <a href="/DEVELOPER_GUIDE.md" style="color: #4299e1;">Developer Guide</a>
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        let eventSource = null;
+        let activeTab = 'submit-browser';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkServerHealth();
+            loadSystemStatus();
+        });
+
+        // Configuration
+        function getApiUrl() {
+            return document.getElementById('api-url').value.trim();
+        }
+
+        function getDefaultApp() {
+            return document.getElementById('default-app').value.trim();
+        }
+
+        function getDefaultHost() {
+            return document.getElementById('default-host').value.trim();
+        }
+
+        // Tab switching
+        function switchTab(section, tab) {
+            const tabButtons = document.querySelectorAll(`.api-section .tab`);
+            const tabContents = document.querySelectorAll(`.api-section .tab-content`);
+
+            tabButtons.forEach(btn => {
+                if (btn.textContent.toLowerCase().includes(tab)) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            tabContents.forEach(content => {
+                if (content.id.includes(tab)) {
+                    content.classList.add('active');
+                } else {
+                    content.classList.remove('active');
+                }
+            });
+
+            activeTab = `${section}-${tab}`;
+        }
+
+        // Server health check
+        async function checkServerHealth() {
+            const statusElement = document.getElementById('server-status');
+            statusElement.innerHTML = '<span class="loading"></span> Checking...';
+
+            try {
+                const response = await fetch(`${getApiUrl()}/api/health`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusElement.innerHTML = `Online (Uptime: ${Math.floor(data.uptime)}s)`;
+                    document.querySelector('.status-indicator').classList.add('status-online');
+                    document.querySelector('.status-indicator').classList.remove('status-offline');
+                } else {
+                    throw new Error('Server error');
+                }
+            } catch (error) {
+                statusElement.innerHTML = 'Offline - Start the server!';
+                document.querySelector('.status-indicator').classList.add('status-offline');
+                document.querySelector('.status-indicator').classList.remove('status-online');
+            }
+        }
+
+        // System status
+        async function loadSystemStatus() {
+            try {
+                const response = await fetch(`${getApiUrl()}/api/logs/status`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    updateDropdownsFromStatus(data);
+                }
+            } catch (error) {
+                console.error('Failed to load system status:', error);
+            }
+        }
+
+        function updateDropdownsFromStatus(status) {
+            // Update app dropdowns
+            const appSelects = ['retrieve-app', 'stream-app'];
+            appSelects.forEach(id => {
+                const select = document.getElementById(id);
+                const currentValue = select.value;
+
+                // Clear existing options (except first if it's the "all" option)
+                while (select.children.length > (id === 'stream-app' ? 1 : 0)) {
+                    select.removeChild(select.lastChild);
+                }
+
+                // Add apps from status
+                status.apps.forEach(app => {
+                    const option = document.createElement('option');
+                    option.value = app.app;
+                    option.textContent = `${app.app} (${app.totalLogs} logs)`;
+                    select.appendChild(option);
+                });
+
+                // Restore previous selection if possible
+                if (currentValue) {
+                    select.value = currentValue;
+                }
+            });
+
+            // Update host dropdowns if app is selected
+            const retrieveApp = document.getElementById('retrieve-app').value;
+            if (retrieveApp) {
+                updateHostDropdowns(retrieveApp, status);
+            }
+        }
+
+        function updateHostDropdowns(appName, status) {
+            const appData = status.apps.find(app => app.app === appName);
+            if (!appData) return;
+
+            const hostSelects = ['retrieve-host', 'stream-host'];
+            hostSelects.forEach(id => {
+                const select = document.getElementById(id);
+                const currentValue = select.value;
+
+                // Clear existing options (except first if it's the "all" option)
+                while (select.children.length > (id === 'stream-host' ? 1 : 0)) {
+                    select.removeChild(select.lastChild);
+                }
+
+                // Add hosts from app
+                appData.hosts.forEach(host => {
+                    const option = document.createElement('option');
+                    option.value = host.host;
+                    option.textContent = `${host.host} (${host.totalLogs} logs)`;
+                    select.appendChild(option);
+                });
+
+                // Restore previous selection if possible
+                if (currentValue) {
+                    select.value = currentValue;
+                }
+            });
+        }
+
+        // Health check test
+        async function testHealthCheck() {
+            const responseDiv = document.getElementById('health-response');
+            const statusElement = document.getElementById('health-status');
+            const bodyElement = document.getElementById('health-body');
+
+            responseDiv.style.display = 'block';
+            statusElement.textContent = 'Loading...';
+            statusElement.className = 'response-status status-info';
+            bodyElement.textContent = 'Fetching health data...';
+
+            try {
+                const response = await fetch(`${getApiUrl()}/api/health`);
+                const data = await response.json();
+
+                statusElement.textContent = `${response.status} ${response.statusText}`;
+                statusElement.className = `response-status ${response.ok ? 'status-success' : 'status-error'}`;
+                bodyElement.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                statusElement.textContent = 'Error';
+                statusElement.className = 'response-status status-error';
+                bodyElement.textContent = error.message;
+            }
+        }
+
+        // System status test
+        async function testSystemStatus() {
+            const responseDiv = document.getElementById('status-response');
+            const statusElement = document.getElementById('status-response-status');
+            const bodyElement = document.getElementById('status-body');
+
+            responseDiv.style.display = 'block';
+            statusElement.textContent = 'Loading...';
+            statusElement.className = 'response-status status-info';
+            bodyElement.textContent = 'Fetching system status...';
+
+            try {
+                const response = await fetch(`${getApiUrl()}/api/logs/status`);
+                const data = await response.json();
+
+                statusElement.textContent = `${response.status} ${response.statusText}`;
+                statusElement.className = `response-status ${response.ok ? 'status-success' : 'status-error'}`;
+                bodyElement.textContent = JSON.stringify(data, null, 2);
+
+                if (response.ok) {
+                    updateDropdownsFromStatus(data);
+                }
+            } catch (error) {
+                statusElement.textContent = 'Error';
+                statusElement.className = 'response-status status-error';
+                bodyElement.textContent = error.message;
+            }
+        }
+
+        // Log submission
+        async function submitBrowserLogs() {
+            const app = document.getElementById('submit-app').value || getDefaultApp();
+            const host = document.getElementById('submit-host').value || getDefaultHost();
+            const logsText = document.getElementById('browser-logs').value;
+
+            try {
+                const logs = JSON.parse(logsText);
+                await submitLogsRequest(app, host, { browser: logs });
+            } catch (error) {
+                showSubmitResponse('Error', 'Invalid JSON format', error.message);
+            }
+        }
+
+        async function submitAppLogs() {
+            const app = document.getElementById('submit-app').value || getDefaultApp();
+            const host = document.getElementById('submit-host').value || getDefaultHost();
+            const logsText = document.getElementById('app-logs').value;
+
+            try {
+                const logs = JSON.parse(logsText);
+                await submitLogsRequest(app, host, logs);
+            } catch (error) {
+                showSubmitResponse('Error', 'Invalid JSON format', error.message);
+            }
+        }
+
+        async function submitMixedLogs() {
+            const app = document.getElementById('submit-app').value || getDefaultApp();
+            const host = document.getElementById('submit-host').value || getDefaultHost();
+            const logsText = document.getElementById('mixed-logs').value;
+
+            try {
+                const logs = JSON.parse(logsText);
+                await submitLogsRequest(app, host, logs);
+            } catch (error) {
+                showSubmitResponse('Error', 'Invalid JSON format', error.message);
+            }
+        }
+
+        async function submitLogsRequest(app, host, logs) {
+            const responseDiv = document.getElementById('submit-response');
+            const statusElement = document.getElementById('submit-status');
+            const bodyElement = document.getElementById('submit-body');
+
+            responseDiv.style.display = 'block';
+            statusElement.textContent = 'Submitting...';
+            statusElement.className = 'response-status status-info';
+            bodyElement.textContent = 'Submitting logs...';
+
+            try {
+                const response = await fetch(`${getApiUrl()}/api/logs/submit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ app, host, logs })
+                });
+
+                const data = await response.json();
+
+                statusElement.textContent = `${response.status} ${response.statusText}`;
+                statusElement.className = `response-status ${response.ok ? 'status-success' : 'status-error'}`;
+                bodyElement.textContent = JSON.stringify(data, null, 2);
+
+                // Refresh system status after successful submission
+                if (response.ok) {
+                    setTimeout(loadSystemStatus, 500);
+                }
+            } catch (error) {
+                statusElement.textContent = 'Error';
+                statusElement.className = 'response-status status-error';
+                bodyElement.textContent = error.message;
+            }
+        }
+
+        function showSubmitResponse(status, message, details) {
+            const responseDiv = document.getElementById('submit-response');
+            const statusElement = document.getElementById('submit-status');
+            const bodyElement = document.getElementById('submit-body');
+
+            responseDiv.style.display = 'block';
+            statusElement.textContent = status;
+            statusElement.className = `response-status status-error`;
+            bodyElement.textContent = `${message}\n${details}`;
+        }
+
+        // Generate random logs
+        function generateRandomLogs() {
+            const levels = ['INFO', 'WARN', 'ERROR', 'DEBUG'];
+            const messages = [
+                'User logged in',
+                'API request completed',
+                'Form validation failed',
+                'Network timeout occurred',
+                'Page loaded successfully',
+                'Button clicked',
+                'Data saved',
+                'Connection established'
+            ];
+            const sources = ['app.js', 'auth.js', 'api.js', 'utils.js', 'components.js'];
+
+            const randomLogs = [];
+            const count = Math.floor(Math.random() * 3) + 1; // 1-3 logs
+
+            for (let i = 0; i < count; i++) {
+                randomLogs.push({
+                    level: levels[Math.floor(Math.random() * levels.length)],
+                    message: messages[Math.floor(Math.random() * messages.length)],
+                    source: `${sources[Math.floor(Math.random() * sources.length)]}:${Math.floor(Math.random() * 200) + 1}`,
+                    timestamp: Date.now() + (i * 1000)
+                });
+            }
+
+            document.getElementById('browser-logs').value = JSON.stringify(randomLogs, null, 2);
+        }
+
+        // Retrieve logs
+        async function retrieveLogs() {
+            const app = document.getElementById('retrieve-app').value;
+            const host = document.getElementById('retrieve-host').value;
+            const namespace = document.getElementById('retrieve-namespace').value;
+            const lines = document.getElementById('retrieve-lines').value;
+            const filter = document.getElementById('retrieve-filter').value;
+
+            const responseDiv = document.getElementById('retrieve-response');
+            const statusElement = document.getElementById('retrieve-status');
+            const bodyElement = document.getElementById('retrieve-body');
+
+            responseDiv.style.display = 'block';
+            statusElement.textContent = 'Loading...';
+            statusElement.className = 'response-status status-info';
+            bodyElement.textContent = 'Retrieving logs...';
+
+            try {
+                let url = `${getApiUrl()}/api/logs/${app}/${host}/${namespace}?lines=${lines}`;
+                if (filter) {
+                    url += `&filter=${encodeURIComponent(filter)}`;
+                }
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                statusElement.textContent = `${response.status} ${response.statusText}`;
+                statusElement.className = `response-status ${response.ok ? 'status-success' : 'status-error'}`;
+                bodyElement.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                statusElement.textContent = 'Error';
+                statusElement.className = 'response-status status-error';
+                bodyElement.textContent = error.message;
+            }
+        }
+
+        function clearRetrieveFilters() {
+            document.getElementById('retrieve-lines').value = '20';
+            document.getElementById('retrieve-filter').value = '';
+        }
+
+        // SSE Streaming
+        function startStream() {
+            if (eventSource) {
+                stopStream();
+            }
+
+            const app = document.getElementById('stream-app').value;
+            const host = document.getElementById('stream-host').value;
+            const namespace = document.getElementById('stream-namespace').value;
+            const lines = document.getElementById('stream-lines').value;
+
+            let url = `${getApiUrl()}/api/logs/stream`;
+            const params = new URLSearchParams();
+
+            if (app) params.append('app', app);
+            if (host) params.append('frontend_host', host);
+            if (namespace) params.append('namespace', namespace);
+            if (lines) params.append('lines', lines);
+
+            if (params.toString()) {
+                url += '?' + params.toString();
+            }
+
+            eventSource = new EventSource(url);
+
+            eventSource.onopen = () => {
+                updateStreamButtons(true);
+                addStreamEvent('connected', { message: 'Connected to log stream' });
+            };
+
+            eventSource.addEventListener('connected', (event) => {
+                const data = JSON.parse(event.data);
+                addStreamEvent('connected', data);
+            });
+
+            eventSource.addEventListener('initial_logs', (event) => {
+                const data = JSON.parse(event.data);
+                addStreamEvent('initial_logs', data);
+            });
+
+            eventSource.addEventListener('new_logs', (event) => {
+                const data = JSON.parse(event.data);
+                addStreamEvent('new_logs', data);
+            });
+
+            eventSource.addEventListener('keepalive', (event) => {
+                const data = JSON.parse(event.data);
+                addStreamEvent('keepalive', data);
+            });
+
+            eventSource.onerror = (error) => {
+                addStreamEvent('error', { message: 'Stream error occurred' });
+                updateStreamButtons(false);
+            };
+
+            document.getElementById('stream-output').style.display = 'block';
+        }
+
+        function stopStream() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+            updateStreamButtons(false);
+            addStreamEvent('disconnected', { message: 'Stream closed' });
+        }
+
+        function updateStreamButtons(connected) {
+            document.getElementById('stream-start-btn').disabled = connected;
+            document.getElementById('stream-stop-btn').disabled = !connected;
+        }
+
+        function addStreamEvent(eventType, data) {
+            const eventsContainer = document.getElementById('stream-events');
+            const eventDiv = document.createElement('div');
+            eventDiv.className = `stream-event ${eventType}`;
+
+            const timestamp = new Date().toLocaleTimeString();
+            eventDiv.innerHTML = `
+                <div style="color: #a0aec0; font-size: 0.75rem;">${timestamp}</div>
+                <div><span class="event-type">event: ${eventType}</span></div>
+                <div style="margin-top: 0.25rem;">data: ${JSON.stringify(data, null, 2)}</div>
+            `;
+
+            eventsContainer.appendChild(eventDiv);
+            eventsContainer.scrollTop = eventsContainer.scrollHeight;
+
+            // Limit number of events displayed
+            while (eventsContainer.children.length > 50) {
+                eventsContainer.removeChild(eventsContainer.firstChild);
+            }
+        }
+
+        function clearStream() {
+            document.getElementById('stream-events').innerHTML = '';
+        }
+
+        // Update dropdowns when app selection changes
+        document.getElementById('retrieve-app').addEventListener('change', async (e) => {
+            try {
+                const response = await fetch(`${getApiUrl()}/api/logs/status`);
+                const data = await response.json();
+                updateHostDropdowns(e.target.value, data);
+            } catch (error) {
+                console.error('Failed to update host dropdowns:', error);
+            }
+        });
+    </script>
+</body>
+</html>

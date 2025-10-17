@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Browser Logger System - Integration Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            margin: 5px;
+            padding: 10px 15px;
+            background: #007cba;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #005a87;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 3px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        #logOutput {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 3px;
+            padding: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+    <script>
+        // Enable logging BEFORE loading logger script
+        window.MCP_LOGGING_ENABLED = true;
+        window.MCP_LOGGING_BACKEND_URL = 'http://localhost:22345';
+        window.MCP_LOGGING_BUFFER_SIZE = 50;
+        window.MCP_LOGGING_BATCH_INTERVAL = 100;
+    </script>
+    <script src="mcp-logger.js"></script>
+</head>
+<body>
+    <h1>🧪 Browser Logger System - Integration Test</h1>
+
+    <div class="status info">
+        <strong>📋 Instructions:</strong>
+        <ol>
+            <li>Start the backend server: <code>node logger-server.js</code></li>
+            <li>Start the MCP server: <code>node browser-logs-mcp-server.js</code></li>
+            <li>Click the test buttons below to generate logs</li>
+            <li>Use the <code>get_logs()</code> tool in your MCP client to view logs</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2>🔧 System Status</h2>
+        <button onclick="checkSystemStatus()">Check System Status</button>
+        <div id="systemStatus"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📝 Console Logging Tests</h2>
+        <button onclick="testConsoleLogs()">Test Console Logs</button>
+        <button onclick="testConsoleErrors()">Test Console Errors</button>
+        <button onclick="testNetworkErrors()">Test Network Errors</button>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 Application Logging Tests</h2>
+        <button onclick="testUserActions()">Test User Actions</button>
+        <button onclick="testApiCalls()">Test API Calls</button>
+        <button onclick="testPerformance()">Test Performance</button>
+        <button onclick="testCustomNamespace()">Test Custom Namespace</button>
+    </div>
+
+    <div class="test-section">
+        <h2>🔄 Batch Tests</h2>
+        <button onclick="testBatchLogging()">Send 50 Logs Rapidly</button>
+        <button onclick="testMixedLogging()">Test Mixed Logging Types</button>
+    </div>
+
+    <div class="test-section">
+        <h2>📈 Test Results</h2>
+        <div id="testResults"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🖥️ Local Log Output</h2>
+        <div id="logOutput"></div>
+        <button onclick="clearLocalLog()">Clear Local Log</button>
+    </div>
+
+    <script>
+        let localLogOutput = [];
+
+        function logLocal(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            localLogOutput.push(logEntry);
+
+            // Keep only last 100 entries
+            if (localLogOutput.length > 100) {
+                localLogOutput = localLogOutput.slice(-100);
+            }
+
+            updateLocalLogDisplay();
+        }
+
+        function updateLocalLogDisplay() {
+            document.getElementById('logOutput').textContent = localLogOutput.join('\n');
+        }
+
+        function clearLocalLog() {
+            localLogOutput = [];
+            updateLocalLogDisplay();
+        }
+
+        function showStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function addTestResult(message, success = true) {
+            const resultsDiv = document.getElementById('testResults');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `status ${success ? 'success' : 'error'}`;
+            resultDiv.innerHTML = `${success ? '✅' : '❌'} ${message}`;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        async function checkSystemStatus() {
+            logLocal('🔍 Checking system status...');
+
+            try {
+                // Check backend health
+                const response = await fetch('http://localhost:22345/api/health');
+                const data = await response.json();
+
+                if (data.status === 'ok') {
+                    showStatus('systemStatus',
+                        `✅ Backend server is running<br>` +
+                        `📊 Active hosts: ${data.activeHosts}<br>` +
+                        `⏱️ Uptime: ${Math.floor(data.uptime)}s<br>` +
+                        `💾 Memory: ${Math.round(data.memory.heapUsed / 1024 / 1024)}MB`,
+                        'success'
+                    );
+                    logLocal('✅ Backend server is healthy');
+                } else {
+                    throw new Error('Backend not healthy');
+                }
+            } catch (error) {
+                showStatus('systemStatus',
+                    `❌ Backend server not accessible<br>` +
+                    `Error: ${error.message}<br>` +
+                    `Make sure: node logger-server.js is running`,
+                    'error'
+                );
+                logLocal('❌ Backend server not accessible');
+            }
+
+            // Check if frontend logger is initialized
+            if (window.BrowserLogger && window.BrowserLogger.isActive) {
+                logLocal('✅ Frontend logger is active');
+                addTestResult('Frontend logger initialized successfully');
+            } else {
+                logLocal('❌ Frontend logger not active');
+                addTestResult('Frontend logger not initialized', false);
+            }
+        }
+
+        function testConsoleLogs() {
+            logLocal('📝 Testing console logs...');
+
+            console.log('Test log message from integration test');
+            console.info('Test info message');
+            console.warn('Test warning message');
+            console.debug('Test debug message');
+
+            addTestResult('Console logs sent successfully');
+            logLocal('✅ Console logs sent');
+        }
+
+        function testConsoleErrors() {
+            logLocal('❌ Testing console errors...');
+
+            console.error('Test error message from integration test');
+            console.error('Test error with object', {
+                type: 'ValidationError',
+                field: 'email',
+                value: 'invalid'
+            });
+
+            addTestResult('Console errors sent successfully');
+            logLocal('✅ Console errors sent');
+        }
+
+        function testNetworkErrors() {
+            logLocal('🌐 Testing network errors...');
+
+            // This will intentionally fail and trigger network error logging
+            fetch('http://invalid-url-for-testing-12345.com')
+                .catch(() => {
+                    logLocal('✅ Network error test completed');
+                    addTestResult('Network error captured successfully');
+                });
+        }
+
+        function testUserActions() {
+            logLocal('👤 Testing user action logs...');
+
+            logger.log('user-actions', {
+                action: 'click',
+                target: 'test-button',
+                component: 'IntegrationTest',
+                timestamp: Date.now()
+            });
+
+            logger.log('user-actions', {
+                action: 'form-submit',
+                form: 'test-form',
+                fields: ['name', 'email'],
+                timestamp: Date.now()
+            });
+
+            addTestResult('User action logs sent successfully');
+            logLocal('✅ User action logs sent');
+        }
+
+        function testApiCalls() {
+            logLocal('🔌 Testing API call logs...');
+
+            logger.log('api-calls', {
+                method: 'POST',
+                url: '/api/test',
+                status: 200,
+                duration: 125,
+                payload: { test: true },
+                timestamp: Date.now()
+            });
+
+            logger.log('api-calls', {
+                method: 'GET',
+                url: '/api/users',
+                status: 404,
+                duration: 45,
+                error: 'Not found',
+                timestamp: Date.now()
+            });
+
+            addTestResult('API call logs sent successfully');
+            logLocal('✅ API call logs sent');
+        }
+
+        function testPerformance() {
+            logLocal('⚡ Testing performance logs...');
+
+            const startTime = performance.now();
+
+            // Simulate some work
+            for (let i = 0; i < 1000000; i++) {
+                Math.random();
+            }
+
+            const endTime = performance.now();
+            const duration = endTime - startTime;
+
+            logger.log('performance', {
+                metric: 'computation-test',
+                duration: Math.round(duration),
+                unit: 'ms',
+                iterations: 1000000,
+                timestamp: Date.now()
+            });
+
+            addTestResult('Performance logs sent successfully');
+            logLocal('✅ Performance logs sent');
+        }
+
+        function testCustomNamespace() {
+            logLocal('🎯 Testing custom namespace...');
+
+            logger.log('test-integration', {
+                test: true,
+                component: 'IntegrationTest',
+                timestamp: Date.now(),
+                data: {
+                    step: 'custom-namespace-test',
+                    success: true
+                }
+            });
+
+            addTestResult('Custom namespace logs sent successfully');
+            logLocal('✅ Custom namespace logs sent');
+        }
+
+        function testBatchLogging() {
+            logLocal('🚀 Testing batch logging (50 logs)...');
+
+            for (let i = 1; i <= 50; i++) {
+                logger.log('batch-test', {
+                    iteration: i,
+                    batch: 'test',
+                    timestamp: Date.now(),
+                    random: Math.random()
+                });
+
+                // Mix in some console logs
+                if (i % 10 === 0) {
+                    console.log(`Batch test iteration ${i} completed`);
+                }
+            }
+
+            addTestResult('Batch logging test completed (50 logs sent)');
+            logLocal('✅ Batch logging test completed');
+        }
+
+        function testMixedLogging() {
+            logLocal('🌈 Testing mixed logging types...');
+
+            // Console logs
+            console.log('Mixed test - console log');
+            console.warn('Mixed test - console warning');
+
+            // Application logs
+            logger.log('mixed-test', {
+                type: 'mixed-logging',
+                phase: 1,
+                timestamp: Date.now()
+            });
+
+            // Error simulation
+            setTimeout(() => {
+                try {
+                    throw new Error('Test error for mixed logging');
+                } catch (error) {
+                    console.error('Mixed test - caught error:', error.message);
+                }
+
+                logger.log('mixed-test', {
+                    type: 'mixed-logging',
+                    phase: 2,
+                    completed: true,
+                    timestamp: Date.now()
+                });
+
+                addTestResult('Mixed logging test completed successfully');
+                logLocal('✅ Mixed logging test completed');
+            }, 100);
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            logLocal('🚀 Integration test page loaded');
+
+            // Auto-check system status after a short delay
+            setTimeout(() => {
+                checkSystemStatus();
+            }, 1000);
+        });
+
+        // Override console methods to also show in local log
+        const originalConsole = {
+            log: console.log,
+            error: console.error,
+            warn: console.warn,
+            info: console.info,
+            debug: console.debug
+        };
+
+        console.log = function(...args) {
+            originalConsole.log.apply(console, args);
+            logLocal('📝 ' + args.join(' '));
+        };
+
+        console.error = function(...args) {
+            originalConsole.error.apply(console, args);
+            logLocal('❌ ' + args.join(' '));
+        };
+
+        console.warn = function(...args) {
+            originalConsole.warn.apply(console, args);
+            logLocal('⚠️ ' + args.join(' '));
+        };
+
+        console.info = function(...args) {
+            originalConsole.info.apply(console, args);
+            logLocal('ℹ️ ' + args.join(' '));
+        };
+
+        console.debug = function(...args) {
+            originalConsole.debug.apply(console, args);
+            logLocal('🐛 ' + args.join(' '));
+        };
+    </script>
+</body>
+</html>
