@@ -109,7 +109,7 @@ graph TB
     frontend["Frontend (or Backend) Application"]
     claude["AI Client"]
 
-    user --> frontend
+    user --> |"interacts"| frontend
     frontend -->|"HTTP POST"| LS
     LS -->|"SSE"| MS
     MS -->|"STDIO"| claude
