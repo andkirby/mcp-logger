@@ -2,6 +2,47 @@
 
 A lightweight logging system that captures frontend console logs and makes them accessible via MCP (Model Context Protocol). Perfect for development and debugging environments.
 
+## 📋 System Overview
+
+The Browser Logging System consists of three main components:
+
+1. **Frontend Logger** (`mcp-logger.js`) - Captures console logs and sends to backend
+2. **Backend Server** (`logger-server.js`) - Receives and stores logs from frontend
+3. **MCP Server** (`mcp-server.js`) - Provides MCP access to stored logs
+
+### 🏗️ Architecture Overview
+
+#### System Context (C4 Level 1)
+
+```mermaid
+graph TB
+    subgraph "Logger System"
+        LS["Logger Server"]
+        MS["MCP Server"]
+    end
+
+    user["Developer"]
+    frontend["Frontend (or Backend) Application"]
+    claude["AI Client"]
+
+    user --> |"interacts"| frontend
+    frontend -->|"HTTP POST"| LS
+    LS -->|"SSE"| MS
+    MS -->|"STDIO"| claude
+
+    user -->|"ask: 'read logs'"| claude
+    claude -->|"get_logs tool"| MS
+    MS -->|"HTTP GET"| LS
+
+    classDef system fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef external fill:#f5f5f5,stroke:#666,stroke-width:1px
+
+    class LS,MS system
+    class user,frontend,claude external
+```
+
+Read more in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+
 ## 🚀 Quick Start (5-Minute Setup)
 
 ### Step 1: Install Dependencies
@@ -86,92 +127,6 @@ npx @modelcontextprotocol/inspector --cli node $(pwd)/mcp-server.js \
 ### Step 7: Test Your Setup
 Use the `get_logs()` tool in your MCP client to retrieve logs from your frontend application.
 
-## 📋 System Overview
-
-The Browser Logging System consists of three main components:
-
-1. **Frontend Logger** (`mcp-logger.js`) - Captures console logs and sends to backend
-2. **Backend Server** (`logger-server.js`) - Receives and stores logs from frontend
-3. **MCP Server** (`mcp-server.js`) - Provides MCP access to stored logs
-
-### 🏗️ Architecture Overview
-
-#### System Context (C4 Level 1)
-
-```mermaid
-graph TB
-    subgraph "Logger System"
-        LS["Logger Server"]
-        MS["MCP Server"]
-    end
-
-    user["Developer"]
-    frontend["Frontend (or Backend) Application"]
-    claude["AI Client"]
-
-    user --> |"interacts"| frontend
-    frontend -->|"HTTP POST"| LS
-    LS -->|"SSE"| MS
-    MS -->|"STDIO"| claude
-
-    user -->|"ask: 'read logs'"| claude
-    claude -->|"get_logs tool"| MS
-    MS -->|"HTTP GET"| LS
-
-    classDef system fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-    classDef external fill:#f5f5f5,stroke:#666,stroke-width:1px
-
-    class LS,MS system
-    class user,frontend,claude external
-```
-
-#### Component Architecture (C4 Level 2)
-
-```mermaid
-graph TB
-    subgraph "Frontend Application"
-        console["Console API"]
-        logger["mcp-logger.js"]
-    end
-
-    subgraph "Logger Server :22345"
-        api["HTTP API"]
-        storage["Log Storage"]
-        sse["SSE Stream"]
-        script["Script Server"]
-    end
-
-    subgraph "MCP Server"
-        client["SSE Client"]
-        tools["get_logs Tool"]
-    end
-
-    subgraph "AI Assistant"
-        claude["AI Client"]
-    end
-
-    console --> logger
-    logger -->|"POST /api/logs/submit"| api
-    api --> storage
-    storage --> sse
-    script -->|"GET /mcp-logger.js"| logger
-
-    sse --> client
-    client --> tools
-
-    tools -.->|"HTTP GET"| api
-    tools -->|"log data"| claude
-
-    classDef frontend fill:#e3f2fd,stroke:#1976d2
-    classDef backend fill:#f3e5f5,stroke:#7b1fa2
-    classDef mcp fill:#e8f5e8,stroke:#388e3c
-    classDef external fill:#fff3e0,stroke:#f57c00
-
-    class console,logger frontend
-    class api,storage,sse,script backend
-    class client,tools mcp
-    class claude external
-```
 
 ## 🔧 Configuration
 
