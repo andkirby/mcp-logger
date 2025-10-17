@@ -106,7 +106,7 @@ graph TB
     end
 
     user["Developer"]
-    frontend["Frontend Application"]
+    frontend["Frontend (or Backend) Application"]
     claude["AI Client"]
 
     user --> frontend
@@ -114,7 +114,7 @@ graph TB
     LS -->|"SSE"| MS
     MS -->|"STDIO"| claude
 
-    user -->|"configure"| claude
+    user -->|"ask: 'read logs'"| claude
     claude -->|"get_logs tool"| MS
     MS -->|"HTTP GET"| LS
 
