@@ -1,6 +1,6 @@
 # `MCP-logger` - Logging System + MCP Server + Browser Integration
 
-A lightweight logging system that captures frontend console logs and makes them accessible via MCP (Model Context Protocol). Perfect for development and debugging environments.
+A lightweight logging system that captures frontend console logs and makes them accessible via MCP (Model Context Protocol). Perfect for development and debugging environments with AI assistants.
 
 ## 📋 System Overview
 
@@ -69,11 +69,29 @@ node logger-server.js
 # Expected: 🚀 Browser Logger Server running on http://localhost:22345
 ```
 
-### Step 4: Start MCP Server
+### Step 4: Configure MCP Client
+The MCP server uses STDIO transport and is launched automatically by your AI client:
+
 ```bash
-# Terminal 2
-node mcp-server.js
-# Expected: 🚀 Browser Logs MCP Server starting...
+# Quick setup with Claude Code CLI
+node mcp-server.js mcp-help
+```
+
+With default app `my-app` (AI client will use MCP `FE-logs` only for app `my-app`):
+```bash
+claude mcp add FE-logs node $(pwd)/mcp-server.js \
+    --scope local --env FILTER_APP=my-app
+```
+
+Or use base setup (requires app parameter in get_logs calls):
+```bash
+claude mcp add FE-logs node $(pwd)/mcp-server.js
+```
+
+**Test with MCP inspector:**
+```bash
+npx @modelcontextprotocol/inspector --cli node $(pwd)/mcp-server.js \
+  -e FILTER_APP=my-app --method tools/call --tool-name 'get_logs'
 ```
 
 ### Step 5: Add to Frontend Application
@@ -103,29 +121,21 @@ window.MCP_LOGGING_BACKEND_URL = 'http://localhost:22345';
 </script>
 ```
 
-### Step 6: Configure MCP in your LLM client
-If you want to use the MCP server with AI Client:
-```bash
-# Quick setup with Claude Code CLI
-node mcp-server.js mcp-help
-```
-With default app `my-app` (LLM will use MCP `FE-logs` only for the app a `my-app`)
-```bash
-claude mcp add FE-logs node $(pwd)/mcp-server.js \
-    --scope local --env FILTER_APP=my-app
-```
-Or use base setup
-```bash
-claude mcp add FE-logs node $(pwd)/mcp-server.js
-```
-##### Test With inspector
-```bash
-npx @modelcontextprotocol/inspector --cli node $(pwd)/mcp-server.js \
-  -e FILTER_APP=my-app --method tools/call --tool-name 'get_logs'
+### Step 6: Test Your Setup
+Use the `get_logs()` tool in your MCP client to retrieve logs from your frontend application.
+
+**Without FILTER_APP (requires app parameter):**
+```javascript
+get_logs(app="my-app")
+get_logs(app="my-app", filter="error", lines=50)
 ```
 
-### Step 7: Test Your Setup
-Use the `get_logs()` tool in your MCP client to retrieve logs from your frontend application.
+**With FILTER_APP set (app parameter optional):**
+```javascript
+get_logs()                                    // Uses default app
+get_logs(filter="error", lines=50)            // Uses default app
+get_logs(app="other-app")                     // Override default app
+```
 
 
 ## 🔧 Configuration
@@ -247,7 +257,7 @@ curl http://localhost:22345/api/health
 
 ### Frontend Integration Test
 
-Try to open [test/test-frontend.html](./test/test-frontend.html)
+Open [test/test-frontend.html](./test/test-frontend.html) in your browser to test logging functionality.
 
 ## 🔧 Frontend Configuration
 
@@ -306,11 +316,17 @@ mcp-logger/
 ├── mcp-logger.js                    # Frontend logger
 ├── inject-logger.js                 # Auto-loading script
 ├── logger-server.js                 # Backend HTTP server
-├── mcp-server.js                     # MCP server
+├── mcp-server.js                     # MCP server (STDIO transport)
 ├── .env.example                     # Example configuration
 ├── .env                             # Your configuration (create from .env.example)
-├── test-*.html                      # Test files
-├── package.json                     # Dependencies
+├── package.json                     # Dependencies and scripts
+├── openapi.yaml                     # OpenAPI 3.1 specification
+├── CLAUDE.md                        # Claude Code project instructions
+├── test/                            # Test files
+│   ├── test-frontend.html           # Full integration test
+│   ├── test-simple.html             # Basic console logging test
+│   ├── test-frontend-simulation.js  # Backend test simulation
+│   └── test-spam-protection.js      # Rate limiting test
 └── README.md                        # This file
 ```
 
@@ -337,16 +353,18 @@ Content-Type: application/json
 
 For technical support:
 1. Check the troubleshooting section above
-2. Review individual task documentation in the `docs/` folder
+2. See [CLAUDE.md](./CLAUDE.md) for project setup guidance
 3. Create an issue with detailed information
 
-## 📚 API Documentation
+## 📚 Documentation
 
-### 📖 Local Documentation
-- **🔗 Interactive Swagger UI**: [docs/openapi.html](./docs/openapi.html) - Test API endpoints directly in your browser
-- **📚 Beautiful Documentation**: [docs/redoc.html](./docs/redoc.html) - Developer-friendly API reference
-- **🧪 Interactive Testing**: [docs/api-test-examples.html](./docs/api-test-examples.html) - Complete testing interface
+### 📖 API Documentation
+- **📖 OpenAPI Specification**: [openapi.yaml](./openapi.yaml) - Complete OpenAPI 3.1 specification
 
-### 🌐 Online Documentation
-- **📖 API Specification**: [openapi.yaml](./openapi.yaml) - Complete OpenAPI 3.1 specification
-- **📚 Developer Guide**: [API.md](./docs/API.md) - Comprehensive integration guide
+### 🏗️ Project Documentation
+- **🤖 Claude Code Setup**: [CLAUDE.md](./CLAUDE.md) - Project instructions and development guidance
+
+### 🧪 Testing
+- **🌐 Frontend Integration**: [test/test-frontend.html](./test/test-frontend.html) - Full integration test
+- **⚡ Backend Simulation**: [test/test-frontend-simulation.js](./test/test-frontend-simulation.js) - Test backend API directly
+- **🛡️ Rate Limiting**: [test/test-spam-protection.js](./test/test-spam-protection.js) - Test rate limiting functionality
