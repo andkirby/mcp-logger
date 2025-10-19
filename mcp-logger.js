@@ -100,9 +100,9 @@
                 message: args.map(arg => {
                     if (typeof arg === 'object') {
                         try {
-                            return JSON.stringify(arg);
+                            return JSON.stringify(arg, this.safeStringifyReplacer());
                         } catch {
-                            return String(arg);
+                            return this.safeObjectToString(arg);
                         }
                     }
                     return String(arg);
@@ -160,24 +160,62 @@
                     logs: {}
                 };
 
-                logsToSend.forEach(log => {
-                    if (!payload.logs[log.namespace]) {
-                        payload.logs[log.namespace] = [];
-                    }
+                // Group logs by namespace first, then format correctly
+                const groupedLogs = {};
 
-                    if (Array.isArray(log.data)) {
-                        payload.logs[log.namespace].push(...log.data);
+                logsToSend.forEach(log => {
+                    if (!groupedLogs[log.namespace]) {
+                        groupedLogs[log.namespace] = [];
+                    }
+                    groupedLogs[log.namespace].push(log.data);
+                });
+
+                // Now format according to backend expectations
+                Object.keys(groupedLogs).forEach(namespace => {
+                    if (namespace === 'browser') {
+                        // Browser logs: flatten into a single array
+                        payload.logs[namespace] = [];
+                        groupedLogs[namespace].forEach(logData => {
+                            if (Array.isArray(logData)) {
+                                payload.logs[namespace].push(...logData);
+                            } else {
+                                payload.logs[namespace].push(logData);
+                            }
+                        });
                     } else {
-                        payload.logs[log.namespace].push(log.data);
+                        // Non-browser logs: send each as a separate array item
+                        // Backend expects array for this case in handleLogSubmission
+                        payload.logs[namespace] = groupedLogs[namespace];
                     }
                 });
+
+                // Validate and debug the payload before sending
+                let requestBody;
+                try {
+                    requestBody = JSON.stringify(payload);
+                    if (!requestBody || requestBody === '{}') {
+                        throw new Error('Empty payload generated');
+                    }
+
+                    // Debug log the request (don't log full payload for privacy)
+                    this.log_internal('debug', `BrowserLogger: Sending ${Object.keys(payload.logs || {}).length} namespaces to backend`);
+                } catch (stringifyError) {
+                    this.log_internal('error', 'BrowserLogger: Failed to stringify payload:', stringifyError.message);
+                    this.log_internal('debug', 'BrowserLogger: Payload preview:', {
+                        app: payload.app,
+                        host: payload.host,
+                        logCount: Object.keys(payload.logs || {}).length,
+                        namespaces: Object.keys(payload.logs || {})
+                    });
+                    throw stringifyError;
+                }
 
                 const response = await fetch(`${this.config.backendUrl}/api/logs/submit`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(payload)
+                    body: requestBody
                 });
 
                 if (!response.ok) {
@@ -289,6 +327,51 @@
                     throw error;
                 }
             };
+        }
+
+        safeStringifyReplacer() {
+            const seen = new WeakSet();
+            return (key, value) => {
+                if (typeof value === 'object' && value !== null) {
+                    if (seen.has(value)) {
+                        return '[Circular]';
+                    }
+                    seen.add(value);
+                }
+                return value;
+            };
+        }
+
+        safeObjectToString(obj) {
+            if (obj === null) return 'null';
+            if (obj === undefined) return 'undefined';
+
+            try {
+                const type = Object.prototype.toString.call(obj);
+                if (type === '[object Object]') {
+                    const keys = Object.keys(obj).slice(0, 5); // Limit to first 5 keys
+                    const keyValuePairs = keys.map(key => {
+                        try {
+                            const value = obj[key];
+                            if (typeof value === 'function') return `${key}: [Function]`;
+                            if (typeof value === 'object' && value !== null) {
+                                return `${key}: ${Object.prototype.toString.call(value)}`;
+                            }
+                            return `${key}: ${String(value)}`;
+                        } catch {
+                            return `${key}: [Error accessing property]`;
+                        }
+                    });
+                    const moreText = Object.keys(obj).length > 5 ? '...' : '';
+                    return `{${keyValuePairs.join(', ')}${moreText}}`;
+                } else if (type === '[object Array]') {
+                    return `[Array(${obj.length})]`;
+                } else {
+                    return type;
+                }
+            } catch {
+                return '[Object]';
+            }
         }
 
         isEnabled() {

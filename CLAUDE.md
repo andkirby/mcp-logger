@@ -312,3 +312,4 @@ Runtime:
 Development:
 - `nodemon` - Auto-reload during development
 - `concurrently` - Run multiple processes in parallel
+- Use project code MCL for mdt-all - ticket manager MCP

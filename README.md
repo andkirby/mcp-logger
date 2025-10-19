@@ -207,6 +207,15 @@ BACKEND_PORT=3000
 FILTER_APP=dashboard
 ```
 
+## 🔌 API Endpoints
+
+**Main Endpoints:**
+- `POST /api/logs/submit` - Submit logs from frontend
+- `GET /api/logs/status` - Get all apps, hosts, and namespaces
+- `GET /api/health` - Health check
+- `GET /` - Web log viewer interface
+- `GET /mcp-logger.js` - Frontend logger script
+
 ## 📖 Usage Examples
 
 ### Console Logging (Automatic)
@@ -244,6 +253,17 @@ logger.log('errors', {
 });
 ```
 
+### Shell Command Logging
+```bash
+# First argument is app name, rest is command
+./shell-log.sh my-app npm run build
+./shell-log.sh api-test curl -s http://api.example.com/health
+./shell-log.sh markdown-ticket bash start.sh
+
+# View logs in web interface at http://localhost:22345
+# App: my-app, Namespace: npm (auto-generated from command)
+```
+
 ### MCP Tool Usage
 ```javascript
 // Basic log retrieval
@@ -256,6 +276,23 @@ get_logs(filter="error", lines=10)
 
 // Specific host and namespace
 get_logs(frontend_host="localhost:3000", namespace="user-actions")
+```
+
+## 🖥️ Web Log Viewer
+
+Access the web interface at **http://localhost:22345** when the backend server is running.
+
+**Features:**
+- Real-time log streaming
+- Filter by text, log level, or source
+- Dark/light themes
+- Export logs to clipboard
+- Pause/resume streaming
+
+```bash
+# Start backend and open viewer
+npm run start-backend
+open http://localhost:22345
 ```
 
 ## 🧪 Testing and Verification
@@ -328,24 +365,64 @@ mcp-logger/
 ├── inject-logger.js                 # Auto-loading script
 ├── logger-server.js                 # Backend HTTP server
 ├── mcp-server.js                     # MCP server (STDIO transport)
+├── shell-log.sh                     # Bash wrapper for shell command logging
 ├── .env.example                     # Example configuration
 ├── .env                             # Your configuration (create from .env.example)
 ├── package.json                     # Dependencies and scripts
 ├── openapi.yaml                     # OpenAPI 3.1 specification
 ├── CLAUDE.md                        # Claude Code project instructions
+├── assets/                          # Web viewer assets
+│   ├── log-viewer.css               # Web viewer styles
+│   └── log-viewer.js                # Web viewer functionality
+├── templates/                       # HTML templates
+│   └── log-viewer.html              # Web log viewer template
+├── docs/                            # Documentation
+│   ├── SHELL_LOGGING.md             # Comprehensive shell logging guide
+│   └── CRs/                         # Change requests
+│       └── MCL-001-*.md             # Feature documentation
 ├── test/                            # Test files
 │   ├── test-frontend.html           # Full integration test
 │   ├── test-simple.html             # Basic console logging test
 │   ├── test-frontend-simulation.js  # Backend test simulation
 │   └── test-spam-protection.js      # Rate limiting test
+├── test-log-viewer.html             # Standalone log viewer test
 └── README.md                        # This file
 ```
 
 ## 📞 Backend Integration
 
+### Shell Command Logging
+
+Capture shell command output in real-time using nohup with process substitution.
+
+```bash
+# Usage: ./shell-log.sh app-name command [args...]
+./shell-log.sh my-app npm run build
+./shell-log.sh api-test curl -s http://api.example.com/health
+./shell-log.sh markdown-ticket bash start.sh
+
+# With verbose output
+MCP_LOGGING_VERBOSE=true ./shell-log.sh test-app your-command
+```
+
+**Key Features:**
+- First argument is the **app name**
+- Namespace is **auto-generated** from command (truncated to 30 chars)
+- **Background process capture** using nohup + process substitution
+- **Memory-only logging** (no disk files)
+- **Real-time streaming** to web interface
+- **Stdout/stderr separation** with LOG/ERROR levels
+
+**Environment Variables:**
+- `MCP_LOGGING_BACKEND_URL` - Backend URL (default: http://localhost:22345)
+- `MCP_LOGGING_VERBOSE` - Enable debug output
+- `HOSTNAME` - Host identifier (default: system hostname)
+
+📖 **Detailed Guide**: See [docs/SHELL_LOGGING.md](./docs/SHELL_LOGGING.md) for comprehensive shell logging documentation.
+
 ### Backend System Logging
 
-This logger can be simply used from any backend system as well, just use `http://localhost:22345/api/logs/submit` endpoint with 
+This logger can be simply used from any backend system as well, just use `http://localhost:22345/api/logs/submit` endpoint with
 ```
 POST /api/logs/submit
 Content-Type: application/json

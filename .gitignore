@@ -68,3 +68,8 @@ coverage/
 
 # MCP specific
 *.mcp-session
+
+# mdt files
+docs/CRs/
+.mdt-config.toml
+.mdt-next

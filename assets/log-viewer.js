@@ -14,6 +14,14 @@ class LogViewer {
         this.startStatsUpdater();
     }
 
+    // Helper function to truncate long namespaces
+    truncateNamespace(namespace, maxLength = 30) {
+        if (namespace.length <= maxLength) {
+            return namespace;
+        }
+        return namespace.substring(0, maxLength - 3) + '...';
+    }
+
     initializeElements() {
         this.elements = {
             sourceSelect: document.getElementById('sourceSelect'),
@@ -82,6 +90,29 @@ class LogViewer {
         }
     }
 
+    async refreshSourceList() {
+        try {
+            const response = await fetch('/api/logs/status');
+            const data = await response.json();
+
+            // Store current selection
+            const currentSelection = this.elements.sourceSelect.value;
+
+            // Update the dropdown
+            this.populateSourceSelect(data.apps);
+
+            // Restore selection if it still exists
+            const optionExists = Array.from(this.elements.sourceSelect.options)
+                .some(option => option.value === currentSelection);
+
+            if (optionExists) {
+                this.elements.sourceSelect.value = currentSelection;
+            }
+        } catch (error) {
+            console.error('Failed to refresh source list:', error);
+        }
+    }
+
     populateSourceSelect(apps) {
         this.elements.sourceSelect.innerHTML = '<option value="">Select a source...</option>';
 
@@ -96,8 +127,9 @@ class LogViewer {
                         namespace: ns.namespace
                     });
 
-                    // Display format: app@host:namespace (count logs)
-                    option.textContent = `${app.app}@${host.host}:${ns.namespace} (${ns.count} logs)`;
+                    // Display format: app@host:namespace (count logs) - truncate long namespaces
+                    const truncatedNamespace = this.truncateNamespace(ns.namespace);
+                    option.textContent = `${app.app}@${host.host}:${truncatedNamespace} (${ns.count} logs)`;
                     this.elements.sourceSelect.appendChild(option);
                 });
             });
@@ -164,6 +196,10 @@ class LogViewer {
 
             try {
                 const data = JSON.parse(event.data);
+
+                // Refresh source list when new apps/hosts/namespaces are detected
+                this.refreshSourceList();
+
                 const selectedSource = JSON.parse(this.elements.sourceSelect.value);
                 if (data.logs && data.logs[selectedSource.namespace]) {
                     const newLogs = data.logs[selectedSource.namespace];
@@ -215,14 +251,20 @@ class LogViewer {
             if (filterText) {
                 matchesFilter = false;
                 if (log.namespace === 'browser') {
-                    matchesFilter = log.message.toLowerCase().includes(filterText);
-                } else {
+                    matchesFilter = log.message && log.message.toLowerCase().includes(filterText);
+                } else if (log.data) {
                     matchesFilter = JSON.stringify(log.data).toLowerCase().includes(filterText);
+                } else if (log.message) {
+                    matchesFilter = log.message.toLowerCase().includes(filterText);
                 }
             }
 
-            if (levelFilter && log.level) {
-                matchesLevel = log.level.toLowerCase() === levelFilter.toLowerCase();
+            if (levelFilter) {
+                if (!log.level) {
+                    matchesLevel = false; // No level on log, doesn't match filter
+                } else {
+                    matchesLevel = log.level.toLowerCase() === levelFilter.toLowerCase();
+                }
             }
 
             return matchesFilter && matchesLevel;
@@ -253,23 +295,42 @@ class LogViewer {
 
     formatLog(log) {
         const timestamp = new Date(log.timestamp).toLocaleTimeString();
-        const level = log.level || 'info';
-        const namespace = log.namespace || 'unknown';
+
+        // Handle level extraction from both formats
+        let level = 'info';
+        if (log.level) {
+            level = log.level;
+        } else if (log.data && Array.isArray(log.data) && log.data.length > 0 && log.data[0].level) {
+            level = log.data[0].level;
+        }
+
+        
+        // Handle both standard format (browser) and data-wrapped format (shell)
+        let namespace = log.namespace || 'unknown';
         let message = '';
         let dataHTML = '';
 
-        if (namespace === 'browser') {
-            message = log.message || '';
+        if (log.message) {
+            // Standard format (browser logs)
+            message = log.message;
+        } else if (log.data && Array.isArray(log.data) && log.data.length > 0) {
+            // Data-wrapped format (shell logs)
+            const firstLog = log.data[0];
+            namespace = firstLog.namespace || namespace;
+            message = firstLog.message || '';
         } else {
-            message = `Application log: ${namespace}`;
-            dataHTML = `<div class="log-data">${JSON.stringify(log.data, null, 2)}</div>`;
+            // Fallback
+            message = 'Unknown log format';
         }
+
+        // Truncate namespace for display
+        const displayNamespace = this.truncateNamespace(namespace);
 
         return `
             <div class="log-entry">
                 <div class="log-timestamp">${timestamp}</div>
                 <div class="log-level">${level}</div>
-                <div class="log-namespace">[${namespace}]</div>
+                <div class="log-namespace" title="${namespace}">[${displayNamespace}]</div>
                 <div class="log-message">${message}</div>
                 ${dataHTML}
             </div>

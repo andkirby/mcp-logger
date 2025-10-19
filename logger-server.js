@@ -53,7 +53,8 @@ class LogStorage {
 
             const namespaceData = hostData.namespaces.get(namespace);
 
-            if (namespace === 'browser' && Array.isArray(data)) {
+            if (Array.isArray(data)) {
+                // All array data (browser and shell logs) now come in standard format
                 const formattedLogs = data.map(log => ({
                     ...log,
                     namespace,
@@ -63,6 +64,7 @@ class LogStorage {
                 }));
                 namespaceData.logs.push(...formattedLogs);
             } else {
+                // Fallback for other log formats
                 namespaceData.logs.push({
                     namespace,
                     app,
@@ -200,6 +202,7 @@ class LoggerServer {
             console.log(`❤️  Health check: GET ${serverUrl}/api/health`);
             console.log(`📜 Auto-loading script: GET ${serverUrl}/mcp-logger.js`);
             console.log(`🌊 SSE streaming: GET ${serverUrl}/api/logs/stream`);
+            console.log(`📱 Log viewer UI: GET ${serverUrl}/`);
             console.log(`🔄 Auto-reload enabled - running with nodemon`);
         });
 
@@ -229,7 +232,29 @@ class LoggerServer {
             next();
         });
 
+        // Enhanced JSON parsing with better error handling
         this.app.use(express.json({ limit: '1mb' }));
+
+        // Add JSON parsing error handler
+        this.app.use((err, req, res, next) => {
+            if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+                console.error('JSON parsing error:', {
+                    error: err.message,
+                    contentType: req.headers['content-type'],
+                    url: req.url,
+                    method: req.method,
+                    bodyPreview: req.body ? String(req.body).substring(0, 200) : 'undefined'
+                });
+                return res.status(400).json({
+                    error: 'Invalid JSON in request body',
+                    message: 'The JSON sent to the server is malformed',
+                    details: err.message,
+                    timestamp: Date.now()
+                });
+            }
+            next(err);
+        });
+
         this.app.use((req, res, next) => this.applyRateLimit(req, res, next));
         this.app.use((req, res, next) => {
             console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
@@ -244,6 +269,11 @@ class LoggerServer {
         this.app.get('/api/health', (req, res) => this.handleHealthCheck(req, res));
         this.app.get('/mcp-logger.js', (req, res) => this.handleScriptServing(req, res));
         this.app.get('/api/logs/stream', (req, res) => this.handleSSEStream(req, res));
+        this.app.get('/', (req, res) => this.handleLogViewer(req, res));
+
+        // Serve static assets
+        this.app.use('/assets', express.static(path.join(__dirname, 'assets')));
+
         this.app.use('*', (req, res) => {
             res.status(404).json({ error: 'Endpoint not found' });
         });
@@ -560,6 +590,37 @@ class LoggerServer {
                 this.sseClients.delete(client);
             }
         });
+    }
+
+    handleLogViewer(req, res) {
+        try {
+            const logViewerHTML = this.generateLogViewerHTML();
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            res.send(logViewerHTML);
+            console.log(`📱 Served log viewer UI to: ${req.ip}`);
+        } catch (error) {
+            console.error('Error serving log viewer:', error);
+            res.status(500).json({
+                error: 'Internal server error',
+                message: error.message
+            });
+        }
+    }
+
+    generateLogViewerHTML() {
+        try {
+            const templatePath = path.join(__dirname, 'templates', 'log-viewer.html');
+            if (fs.existsSync(templatePath)) {
+                return fs.readFileSync(templatePath, 'utf8');
+            } else {
+                console.error('Template file not found:', templatePath);
+                throw new Error('Template file not found');
+            }
+        } catch (error) {
+            console.error('Error reading log viewer template:', error);
+            throw error;
+        }
     }
 
     applyRateLimit(req, res, next) {

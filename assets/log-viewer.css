@@ -207,6 +207,7 @@ button.secondary {
     font-weight: 500;
     white-space: nowrap;
     font-size: 0.8rem;
+    min-width: 80px; /* Fixed width for timestamp */
 }
 
 .log-level {
@@ -216,6 +217,8 @@ button.secondary {
     font-size: 0.7rem;
     text-transform: uppercase;
     white-space: nowrap;
+    min-width: 50px; /* Fixed width for level */
+    text-align: center;
 }
 
 .log-level.log { background: #888; color: white; }
@@ -229,11 +232,13 @@ button.secondary {
     font-weight: 500;
     white-space: nowrap;
     font-size: 0.8rem;
+    min-width: 120px; /* Fixed width for namespace */
 }
 
 .log-message {
     flex: 1;
     word-break: break-word;
+    min-width: 200px; /* Ensure message has adequate space */
 }
 
 .log-data {
@@ -243,6 +248,7 @@ button.secondary {
     font-size: 0.8rem;
     margin-top: 0.25rem;
     border-left: 3px solid var(--accent);
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Droid Sans Mono', 'Courier New', monospace;
 }
 
 .footer {
