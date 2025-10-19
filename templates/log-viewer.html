@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Logger - Real-time Log Viewer</title>
+    <link rel="stylesheet" href="/assets/log-viewer.css">
+</head>
+<body data-theme="dark">
+    <header class="header">
+        <div class="header-content">
+            <div class="title">
+                📊 MCP Logger
+            </div>
+            <div class="status">
+                <div class="status-indicator" id="connectionStatus"></div>
+                <span id="statusText">Connecting...</span>
+                <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="controls">
+        <div class="controls-content">
+            <div class="control-group">
+                <label for="sourceSelect">Source:</label>
+                <select id="sourceSelect">
+                    <option value="">Loading...</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="filterInput">Filter:</label>
+                <input type="text" id="filterInput" placeholder="Search logs...">
+            </div>
+            <div class="control-group">
+                <label for="levelFilter">Level:</label>
+                <select id="levelFilter">
+                    <option value="">All Levels</option>
+                    <option value="log">Log</option>
+                    <option value="error">Error</option>
+                    <option value="warn">Warning</option>
+                    <option value="info">Info</option>
+                    <option value="debug">Debug</option>
+                </select>
+            </div>
+            <button id="clearLogs" title="Clear display">Clear</button>
+            <button id="exportLogs" title="Copy logs to clipboard">Export</button>
+            <button id="pauseStreaming" title="Pause/resume streaming">⏸️ Pause</button>
+        </div>
+    </div>
+
+    <div class="log-container">
+        <div class="log-display" id="logDisplay">
+            <div class="empty-state">
+                <h2>Welcome to MCP Logger</h2>
+                <p>Select a source to start viewing logs</p>
+                <p>Real-time streaming will begin automatically once connected</p>
+            </div>
+        </div>
+        <div class="auto-scroll-indicator" id="autoScrollIndicator">Auto-scrolling</div>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="stats">
+                <div class="stat">
+                    <span>📝</span>
+                    <span id="logCount">0 logs</span>
+                </div>
+                <div class="stat">
+                    <span>⚡</span>
+                    <span id="logRate">0.0/s</span>
+                </div>
+                <div class="stat">
+                    <span>💾</span>
+                    <span id="totalLogs">0 total</span>
+                </div>
+            </div>
+            <div class="timestamps">
+                <span id="lastUpdate">No data</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/assets/log-viewer.js"></script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Logger Test</title>
+</head>
+<body>
+    <h1>MCP Logger Test Page</h1>
+    <button onclick="generateLogs()">Generate Test Logs</button>
+    <button onclick="clearLogs()">Clear Logs</button>
+    <div id="status"></div>
+
+    <script>
+        // Configure MCP Logger
+        window.MCP_LOGGING_ENABLED = true;
+        window.MCP_LOGGING_APP_NAME = 'test-app';
+        window.MCP_LOGGING_BACKEND_URL = 'http://localhost:22345';
+    </script>
+    <script src="http://localhost:22345/mcp-logger.js"></script>
+
+    <script>
+        function generateLogs() {
+            console.log('Test log message from test page');
+            console.warn('Warning message from test page');
+            console.error('Error message from test page');
+            console.info('Info message from test page');
+
+            // Application log
+            if (window.logger) {
+                logger.log('user-actions', {
+                    action: 'button-click',
+                    timestamp: Date.now(),
+                    data: { button: 'generate-logs' }
+                });
+            }
+
+            document.getElementById('status').textContent = 'Logs generated at ' + new Date().toLocaleTimeString();
+        }
+
+        function clearLogs() {
+            console.clear();
+            document.getElementById('status').textContent = 'Console cleared';
+        }
+
+        // Auto-generate logs every 5 seconds for testing
+        setInterval(() => {
+            if (Math.random() > 0.7) {
+                console.log('Auto-generated log at ' + new Date().toLocaleTimeString());
+            }
+        }, 5000);
+    </script>
+</body>
+</html>
