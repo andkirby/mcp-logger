@@ -303,6 +303,26 @@ open http://localhost:22345
 curl http://localhost:22345/api/health
 ```
 
+### Postman API Testing
+
+The comprehensive Postman collection provides complete API testing coverage:
+
+```bash
+# Import the collection
+1. Open Postman → Import → File → sandbox/MCP-Logger-API.postman_collection.json
+2. Run individual requests or use Collection Runner for bulk testing
+3. View detailed guide: sandbox/POSTMAN_API_GUIDE.md
+```
+
+**Test Coverage:**
+- ✅ System health and status endpoints
+- ✅ Log submission (browser, application, shell formats)
+- ✅ Log retrieval with filtering and pagination
+- ✅ Real-time SSE streaming
+- ✅ Frontend asset serving
+- ✅ Load testing and concurrent requests
+- ✅ Error handling and edge cases
+
 ### Frontend Integration Test
 
 Open [test/test-frontend.html](./test/test-frontend.html) in your browser to test logging functionality.
@@ -378,8 +398,14 @@ mcp-logger/
 │   └── log-viewer.html              # Web log viewer template
 ├── docs/                            # Documentation
 │   ├── SHELL_LOGGING.md             # Comprehensive shell logging guide
-│   └── CRs/                         # Change requests
-│       └── MCL-001-*.md             # Feature documentation
+│   └── CRs/                         # Change requests (gitignored)
+│       ├── MCL-001-*.md             # Shell logging feature
+│       └── MCL-002-*.md             # Web UI feature
+├── sandbox/                         # Non-tracked files (gitignored)
+│   ├── MCP-Logger-API.postman_collection.json  # Postman API testing collection
+│   ├── POSTMAN_API_GUIDE.md         # Postman collection usage guide
+│   ├── SSE_MONITORING.md            # SSE monitoring guide
+│   └── *.sh, *.html                 # Various test scripts and files
 ├── test/                            # Test files
 │   ├── test-frontend.html           # Full integration test
 │   ├── test-simple.html             # Basic console logging test
@@ -448,6 +474,9 @@ For technical support:
 
 ### 📖 API Documentation
 - **📖 OpenAPI Specification**: [openapi.yaml](./openapi.yaml) - Complete OpenAPI 3.1 specification
+- **📮 Postman Collection**: [sandbox/MCP-Logger-API.postman_collection.json](./sandbox/MCP-Logger-API.postman_collection.json) - Complete API testing collection
+- **📮 Postman Guide**: [sandbox/POSTMAN_API_GUIDE.md](./sandbox/POSTMAN_API_GUIDE.md) - Comprehensive Postman usage guide
+- **🌊 SSE Monitoring**: [sandbox/SSE_MONITORING.md](./sandbox/SSE_MONITORING.md) - SSE monitoring guide
 
 ### 🏗️ Project Documentation
 - **🤖 Claude Code Setup**: [CLAUDE.md](./CLAUDE.md) - Project instructions and development guidance

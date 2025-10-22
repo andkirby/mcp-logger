@@ -73,3 +73,6 @@ coverage/
 docs/CRs/
 .mdt-config.toml
 .mdt-next
+
+# Sandbox directory for non-tracked files
+sandbox/

@@ -54,9 +54,12 @@ send_log() {
         echo "📤: $log_entry" >&2
     fi
 
+    # Create a temporary file with the JSON payload to avoid shell expansion issues
+    local json_payload="{\"app\":\"${APP_NAME}\",\"host\":\"${HOST_NAME}\",\"logs\":{\"${NAMESPACE}\":[${log_entry}]}}"
+
     curl -s -X POST "${BACKEND_URL}/api/logs/submit" \
         -H "Content-Type: application/json" \
-        -d "{\"app\":\"${APP_NAME}\",\"host\":\"${HOST_NAME}\",\"logs\":{\"${NAMESPACE}\":[${log_entry}]}}" \
+        -d "$json_payload" \
         --max-time 5 \
         --connect-timeout 3 \
         > /dev/null 2>&1 || true
@@ -81,8 +84,9 @@ cd "$WORKING_DIR"
             while IFS= read -r line; do
                 if [ -n "$line" ]; then
                     timestamp=$(date +%s)
-                    escaped=$(echo "$line" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
-                    log_entry="{\"timestamp\":${timestamp}000,\"level\":\"LOG\",\"message\":\"${escaped}\",\"namespace\":\"${NAMESPACE}\",\"app\":\"${APP_NAME}\",\"host\":\"${HOST_NAME}\",\"source\":\"shell\"}"
+                    # Properly escape the message for JSON
+                    escaped_message=$(echo "$line" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
+                    log_entry="{\"timestamp\":${timestamp}000,\"level\":\"LOG\",\"message\":\"${escaped_message}\",\"namespace\":\"${NAMESPACE}\",\"app\":\"${APP_NAME}\",\"host\":\"${HOST_NAME}\",\"source\":\"shell\"}"
                     send_log "$log_entry"
                     if [ "$VERBOSE" = "true" ]; then
                         echo "[stdout] $line"
@@ -94,8 +98,9 @@ cd "$WORKING_DIR"
             while IFS= read -r line; do
                 if [ -n "$line" ]; then
                     timestamp=$(date +%s)
-                    escaped=$(echo "$line" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
-                    log_entry="{\"timestamp\":${timestamp}000,\"level\":\"ERROR\",\"message\":\"${escaped}\",\"namespace\":\"${NAMESPACE}\",\"app\":\"${APP_NAME}\",\"host\":\"${HOST_NAME}\",\"source\":\"shell\"}"
+                    # Properly escape the message for JSON
+                    escaped_message=$(echo "$line" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
+                    log_entry="{\"timestamp\":${timestamp}000,\"level\":\"ERROR\",\"message\":\"${escaped_message}\",\"namespace\":\"${NAMESPACE}\",\"app\":\"${APP_NAME}\",\"host\":\"${HOST_NAME}\",\"source\":\"shell\"}"
                     send_log "$log_entry"
                     if [ "$VERBOSE" = "true" ]; then
                         echo "[stderr] $line"

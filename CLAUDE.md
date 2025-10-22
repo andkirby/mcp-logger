@@ -38,12 +38,23 @@ AI Assistant (Claude Desktop)
 - Serves mcp-logger.js with auto-configuration injection
 - SSE streaming endpoint for real-time log delivery
 - Duplicate filtering (5-second window)
+- Web UI log viewer at http://localhost:22345
 
 **mcp-server.js** - MCP server (Node.js)
 - STDIO transport for Claude Desktop integration
 - `get_logs` tool with intelligent host/namespace selection
 - SSE-based real-time log streaming with HTTP fallback
 - Auto-selection logic (single host → auto-select, multiple → prompt)
+- Tool annotations: readOnlyHint=true, idempotentHint=false, openWorldHint=true
+- Pagination support with offset parameter
+- CHARACTER_LIMIT (5,000 chars) with automatic truncation
+
+**shell-log.sh** - Shell command logging wrapper
+- Captures stdout/stderr from shell commands in real-time
+- Uses nohup with process substitution for background process capture
+- Memory-only logging (no disk files)
+- Auto-generates namespace from command name (truncated to 30 chars)
+- Usage: `./shell-log.sh app-name command [args...]`
 
 ## Development Commands
 
@@ -68,20 +79,31 @@ node mcp-server.js
 
 # Run both in parallel (development)
 npm run dev
-```
 
-### Testing
-
-```bash
 # Test backend health
 curl http://localhost:22345/api/health
 
 # Test log status
 curl http://localhost:22345/api/logs/status
 
+# Open web log viewer
+open http://localhost:22345
+```
+
+### Testing
+
+```bash
 # Serve test HTML files locally
 python -m http.server 3000
 # Then open: http://localhost:3000/test-frontend.html
+
+# Test shell logging
+./shell-log.sh test-app echo "Hello from shell"
+
+# MCP inspector test
+npx @modelcontextprotocol/inspector --cli \
+  node mcp-server.js \
+  -e FILTER_APP=my-app --method tools/call --tool-name 'get_logs'
 ```
 
 ## Configuration
@@ -101,9 +123,10 @@ window.MCP_LOGGING_BATCH_INTERVAL = 100;        // Batch interval (ms)
 
 ### Backend Configuration
 
-Environment variables:
+Environment variables (.env file):
 ```bash
 PORT=22345                    # Server port (default: 22345)
+HOST=localhost                # Server host (use 0.0.0.0 for external access)
 MAX_LOG_ENTRIES=500           # Max logs per namespace per host
 ```
 
@@ -217,6 +240,27 @@ When mcp-logger.js is served from backend (GET /mcp-logger.js):
 - Auto-enables logging if not explicitly configured
 - Client registration sent on first connection
 
+### MCP Server Critical Implementation Notes
+
+**STDIO Transport Protocol:**
+- MCP servers using STDIO transport communicate via stdin/stdout
+- **NEVER use `console.log()`** - it writes to stdout and breaks MCP JSON protocol
+- **ALWAYS use `console.error()`** for logging - writes to stderr (safe)
+- Claude Desktop reads MCP protocol messages from stdout
+- Any non-JSON output to stdout causes "Unexpected token" JSON parsing errors
+
+**Tool Annotations:**
+- readOnlyHint: true (tool doesn't modify data)
+- destructiveHint: false (tool doesn't delete anything)
+- idempotentHint: false (results change as new logs stream in)
+- openWorldHint: true (connects to external backend server)
+
+**Pagination and Limits:**
+- Default lines: 5 (reduced from 20 for better readability)
+- Max lines: 20 (reduced from 100)
+- Offset parameter: supports pagination (default: 0)
+- CHARACTER_LIMIT: 5,000 chars (automatic truncation with helpful message)
+
 ## API Endpoints
 
 ### Backend Server
@@ -224,10 +268,11 @@ When mcp-logger.js is served from backend (GET /mcp-logger.js):
 ```
 POST /api/logs/submit                    # Submit logs from frontend (requires app, host, logs)
 GET  /api/logs/status                    # Get all apps, hosts, and namespaces
-GET  /api/logs/:app/:host/:namespace     # Retrieve specific logs (query: ?lines=20&filter=text)
+GET  /api/logs/:app/:host/:namespace     # Retrieve specific logs (query: ?lines=5&offset=0&filter=text)
 GET  /api/health                         # Health check
 GET  /mcp-logger.js                      # Serve logger script with auto-config
 GET  /api/logs/stream                    # SSE streaming endpoint (supports app, frontend_host, namespace params)
+GET  /                                   # Web log viewer UI
 ```
 
 ### MCP Tool
@@ -235,21 +280,31 @@ GET  /api/logs/stream                    # SSE streaming endpoint (supports app,
 **Without FILTER_APP (app parameter required):**
 ```javascript
 get_logs(app="my-app")
-get_logs(app="my-app", filter="error", lines=10)
+get_logs(app="my-app", filter="error", lines=10, offset=0)
 get_logs(app="my-app", frontend_host="localhost:3000", namespace="user-actions")
 ```
 
 **With FILTER_APP set (app parameter optional):**
 ```javascript
 get_logs()                                  // Uses default app from FILTER_APP
-get_logs(filter="error", lines=50)          // Uses default app
+get_logs(filter="error", lines=10)          // Uses default app
+get_logs(offset=5)                          // Pagination with default app
 get_logs(app="other-app")                   // Override default app
 get_logs(app="other-app", namespace="api-calls")  // Override with specific namespace
 ```
 
+**Parameters:**
+- app: Application name (required unless FILTER_APP set)
+- lines: Number of log lines (1-20, default: 5)
+- offset: Pagination offset (min: 0, default: 0)
+- filter: Text search filter
+- frontend_host: Specific host to query
+- namespace: Specific namespace to query
+
 **Important**:
 - The `app` parameter is mandatory unless `FILTER_APP` is set
 - `FILTER_APP` provides a default but can be overridden per query
+- Pagination works by skipping `offset` entries and returning `lines` entries
 
 ## Common Development Tasks
 
@@ -269,17 +324,26 @@ logger.log('my-new-namespace', { custom: 'data' });
 4. Check rate limiting status in backend logs
 5. Verify SSE connection in MCP server logs
 
+### Debugging MCP Server Issues
+
+1. **JSON parsing errors**: Check for `console.log()` usage (must be `console.error()`)
+2. **Tool not found**: Verify MCP server is running and path is correct in Claude Desktop config
+3. **Empty responses**: Check backend server is running on correct port
+4. **SSE connection fails**: Backend may be down, will fall back to HTTP
+
 ### Modifying Log Format
 
 **Frontend**: Edit `addConsoleLog()` in mcp-logger.js for browser logs, or pass custom data structure to `logger.log()`
 
-**Backend**: Edit `formatLogs()` in mcp-server.js for MCP output formatting
+**Backend**: Edit `buildLogOutput()` in mcp-server.js for MCP output formatting
 
 ### Changing Storage Limits
 
 **Backend**: Modify `maxEntries` parameter in LogStorage constructor (logger-server.js:11)
 
 **Frontend**: Set `window.MCP_LOGGING_BUFFER_SIZE` before loading script
+
+**MCP Server**: Modify `this.CHARACTER_LIMIT` in constructor (mcp-server.js:31)
 
 ## File Structure
 
@@ -288,11 +352,16 @@ mcp-logger/
 ├── mcp-logger.js                    # Frontend logger (browser-side)
 ├── inject-logger.js                 # Auto-loading injection script
 ├── logger-server.js                 # Backend HTTP server
-├── mcp-server.js   # MCP server (SSE-based)
+├── mcp-server.js                    # MCP server (STDIO transport, SSE-based)
+├── shell-log.sh                     # Shell command logging wrapper
+├── .env.example                     # Example environment configuration
 ├── test-*.html                      # Test/demo HTML files
-├── docs/                            # Task documentation
-│   ├── list.md                      # MVP overview
-│   └── task-*.md                    # Individual task docs
+├── assets/                          # Web viewer assets (CSS, JS)
+├── templates/                       # HTML templates
+├── docs/                            # Documentation
+│   ├── SHELL_LOGGING.md             # Shell logging guide
+│   └── CRs/                         # Change requests (gitignored)
+├── test/                            # Test files
 ├── package.json                     # Dependencies and scripts
 └── README.md                        # User documentation
 ```
@@ -301,6 +370,8 @@ mcp-logger/
 
 Use provided test HTML files for verification:
 - `test-frontend.html` - Full integration test
+- `test-simple.html` - Basic console logging test
+- Web viewer at http://localhost:22345
 
 ## Dependencies
 
@@ -308,8 +379,16 @@ Runtime:
 - `express` - Backend HTTP server
 - `@modelcontextprotocol/sdk` - MCP protocol implementation
 - `eventsource` - SSE client for MCP server
+- `dotenv` - Environment variable management
 
 Development:
 - `nodemon` - Auto-reload during development
 - `concurrently` - Run multiple processes in parallel
-- Use project code MCL for mdt-all - ticket manager MCP
+
+## Important Constraints
+
+1. **Never include references to Claude, AI tools, or automated assistance in git commits** (messages, co-author tags, or any metadata)
+2. **Never mention Co-Authored-By: Claude <noreply@anthropic.com>**
+3. **MCP servers using STDIO must use console.error() for all logging** (never console.log())
+4. **Application name is required** for proper log organization
+5. **This system is for development environments only** - not production-ready (no auth, uses HTTP)
