@@ -28,6 +28,7 @@ class BrowserLogsMCPServer {
         this.currentLogs = [];
         this.hostStatus = new Map();
         this.defaultApp = process.env.FILTER_APP || null; // Default app from environment
+        this.CHARACTER_LIMIT = 5000; // Maximum response size in characters
         this.setupTools();
     }
 
@@ -47,7 +48,7 @@ class BrowserLogsMCPServer {
                 tools: [
                     {
                         name: 'get_logs',
-                        description: 'Retrieve browser console logs and application logs from frontend applications via SSE streaming',
+                        description: 'Retrieve logs via SSE streaming: frontend browser console logs, namespaced application logs (user-actions, api-calls, etc.), and backend service output logs. Use this to debug issues, monitor user behavior, or trace application flow.',
                         inputSchema: {
                             type: 'object',
                             properties: {
@@ -57,10 +58,16 @@ class BrowserLogsMCPServer {
                                 },
                                 lines: {
                                     type: 'number',
-                                    description: 'Number of log lines to retrieve (1-100, default: 20)',
+                                    description: 'Number of log lines to retrieve (1-20, default: 5)',
                                     minimum: 1,
-                                    maximum: 100,
-                                    default: 20
+                                    maximum: 20,
+                                    default: 5
+                                },
+                                offset: {
+                                    type: 'number',
+                                    description: 'Number of log entries to skip for pagination (default: 0)',
+                                    minimum: 0,
+                                    default: 0
                                 },
                                 filter: {
                                     type: 'string',
@@ -79,6 +86,12 @@ class BrowserLogsMCPServer {
                                 }
                             },
                             required: this.defaultApp ? [] : ['app']
+                        },
+                        annotations: {
+                            readOnlyHint: true,
+                            destructiveHint: false,
+                            idempotentHint: false,
+                            openWorldHint: true
                         }
                     }
                 ]
@@ -88,7 +101,8 @@ class BrowserLogsMCPServer {
 
     async handleGetLogs(args = {}) {
         const requestedApp = args.app || this.defaultApp || '';
-        const lines = Math.min(args.lines || 20, 100);
+        const lines = Math.min(args.lines || 5, 20);
+        const offset = Math.max(args.offset || 0, 0);
         const filter = args.filter || '';
         const requestedHost = args.frontend_host || '';
         const requestedNamespace = args.namespace || '';
@@ -157,7 +171,7 @@ class BrowserLogsMCPServer {
                 requestedApp,
                 hostSelection.host,
                 namespaceSelection.namespace,
-                { lines, filter }
+                { lines, offset, filter }
             );
 
             const formattedOutput = this.formatLogs(
@@ -294,14 +308,19 @@ class BrowserLogsMCPServer {
                         });
                     }
 
-                    // Apply lines limit
-                    if (logs.length > options.lines) {
-                        logs = logs.slice(-options.lines);
-                    }
+                    // Apply offset and lines limit for pagination
+                    const offset = options.offset || 0;
+                    const totalAfterFilter = logs.length;
+
+                    // Skip offset entries and take 'lines' entries
+                    const start = Math.max(0, logs.length - offset - options.lines);
+                    const end = logs.length - offset;
+                    logs = logs.slice(start, end);
 
                     resolve({
                         logs,
-                        totalEntries: this.hostStatus.get(cacheKey).namespaces.get(namespace).length,
+                        totalEntries: totalAfterFilter,
+                        offset,
                         options
                     });
                 } else {
@@ -318,6 +337,7 @@ class BrowserLogsMCPServer {
         try {
             const params = new URLSearchParams();
             if (options.lines) params.append('lines', options.lines);
+            if (options.offset) params.append('offset', options.offset);
             if (options.filter) params.append('filter', options.filter);
 
             const response = await fetch(`${this.backendUrl}/api/logs/${encodeURIComponent(app)}/${encodeURIComponent(host)}/${encodeURIComponent(namespace)}?${params}`);
@@ -408,10 +428,36 @@ class BrowserLogsMCPServer {
     }
 
     formatLogs(data, app, host, namespace, autoSelected = false) {
-        let output = `📋 **Frontend Logs (SSE)** (${data.logs.length} entries`;
+        let logsToFormat = data.logs;
+        let truncated = false;
+
+        // Build output with initial logs
+        let output = this.buildLogOutput(logsToFormat, data, app, host, namespace, autoSelected);
+
+        // Check CHARACTER_LIMIT and truncate if needed
+        if (output.length > this.CHARACTER_LIMIT) {
+            truncated = true;
+            // Cut logs in half and rebuild
+            const halfLogs = Math.ceil(logsToFormat.length / 2);
+            logsToFormat = logsToFormat.slice(-halfLogs);
+            output = this.buildLogOutput(logsToFormat, data, app, host, namespace, autoSelected);
+
+            // Add truncation warning
+            output += `\n\n⚠️ **Response truncated** from ${data.logs.length} to ${logsToFormat.length} entries due to size limits (${this.CHARACTER_LIMIT} chars).\n`;
+            output += `Use 'filter' parameter, reduce 'lines', or use 'offset' for pagination to see specific logs.`;
+        }
+
+        return output;
+    }
+
+    buildLogOutput(logs, data, app, host, namespace, autoSelected) {
+        let output = `**Application Logs** (${logs.length} entries`;
 
         if (data.options && data.options.filter) {
             output += `, filtered by "${data.options.filter}"`;
+        }
+        if (data.offset > 0) {
+            output += `, offset: ${data.offset}`;
         }
         output += `)\n\n`;
 
@@ -419,9 +465,9 @@ class BrowserLogsMCPServer {
         output += `**Host:** ${host}\n`;
         output += `**Namespace:** ${namespace}\n`;
         output += `**Total Available:** ${data.totalEntries} entries\n`;
-        output += `**Connection:** SSE Streaming 🌊\n\n`;
+        output += `**Connection:** SSE Streaming\n\n`;
 
-        data.logs.forEach(log => {
+        logs.forEach(log => {
             const timestamp = new Date(log.timestamp).toLocaleTimeString();
 
             if (log.namespace === 'browser') {
@@ -432,7 +478,7 @@ class BrowserLogsMCPServer {
             }
         });
 
-        if (data.logs.length === 0) {
+        if (logs.length === 0) {
             output += '_No logs found matching the specified criteria._\n';
         }
 
