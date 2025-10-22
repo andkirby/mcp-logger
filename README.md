@@ -408,7 +408,6 @@ mcp-logger/
 │   └── *.sh, *.html                 # Various test scripts and files
 ├── test/                            # Test files
 │   ├── test-frontend.html           # Full integration test
-│   ├── test-simple.html             # Basic console logging test
 │   ├── test-frontend-simulation.js  # Backend test simulation
 │   └── test-spam-protection.js      # Rate limiting test
 ├── test-log-viewer.html             # Standalone log viewer test
