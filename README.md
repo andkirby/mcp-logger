@@ -81,10 +81,10 @@ node logger-server.js
 ```
 
 ### Step 4: Configure MCP Client
-The MCP server uses STDIO transport and is launched automatically by your AI client:
+The MCP server uses STDIO transport and is launched automatically by your LLM client:
 
 ```bash
-# Quick setup with Claude Code CLI
+# Show quick setup with Claude Code CLI
 node mcp-server.js mcp-help
 ```
 
@@ -117,7 +117,7 @@ window.MCP_LOGGING_BACKEND_URL = 'http://localhost:22345';
 (function() {
     // Try to load from server first, fallback to local file
     var script = document.createElement('script');
-    script.src = 'http://localhost:22345/mcp-logger.js';
+    script.src = window.MCP_LOGGING_BACKEND_URL + '/mcp-logger.js';
     script.onerror = function() {
         // Server is down, create a simple fallback logger
         console.log('MCP Logger server offline, using local fallback');
