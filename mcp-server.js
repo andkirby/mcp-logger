@@ -443,7 +443,7 @@ class BrowserLogsMCPServer {
             output = this.buildLogOutput(logsToFormat, data, app, host, namespace, autoSelected);
 
             // Add truncation warning
-            output += `\n\n⚠️ **Response truncated** from ${data.logs.length} to ${logsToFormat.length} entries due to size limits (${this.CHARACTER_LIMIT} chars).\n`;
+            output += `\n\nWARNING: Response truncated from ${data.logs.length} to ${logsToFormat.length} entries due to size limits (${this.CHARACTER_LIMIT} chars).\n`;
             output += `Use 'filter' parameter, reduce 'lines', or use 'offset' for pagination to see specific logs.`;
         }
 
@@ -451,7 +451,7 @@ class BrowserLogsMCPServer {
     }
 
     buildLogOutput(logs, data, app, host, namespace, autoSelected) {
-        let output = `**Application Logs** (${logs.length} entries`;
+        let output = `Application Logs (${logs.length} entries`;
 
         if (data.options && data.options.filter) {
             output += `, filtered by "${data.options.filter}"`;
@@ -461,11 +461,11 @@ class BrowserLogsMCPServer {
         }
         output += `)\n\n`;
 
-        output += `**App:** ${app}\n`;
-        output += `**Host:** ${host}\n`;
-        output += `**Namespace:** ${namespace}\n`;
-        output += `**Total Available:** ${data.totalEntries} entries\n`;
-        output += `**Connection:** SSE Streaming\n\n`;
+        output += `App: ${app}\n`;
+        output += `Host: ${host}\n`;
+        output += `Namespace: ${namespace}\n`;
+        output += `Total Available: ${data.totalEntries} entries\n`;
+        output += `Connection: SSE Streaming\n\n`;
 
         logs.forEach(log => {
             const timestamp = new Date(log.timestamp).toLocaleTimeString();
@@ -479,11 +479,11 @@ class BrowserLogsMCPServer {
         });
 
         if (logs.length === 0) {
-            output += '_No logs found matching the specified criteria._\n';
+            output += 'No logs found matching the specified criteria.\n';
         }
 
         if (autoSelected) {
-            output += `\n**Auto-selected** (single host & namespace available for this app)`;
+            output += `\nAuto-selected (single host & namespace available for this app)`;
         }
 
         return output;
