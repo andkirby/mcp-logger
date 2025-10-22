@@ -183,7 +183,7 @@ class BrowserLogsMCPServer {
                 this.eventSource = new EventSource(`${this.backendUrl}/api/logs/stream`);
 
                 this.eventSource.onopen = () => {
-                    console.log('🌊 SSE connection established');
+                    console.error('🌊 SSE connection established');
                     resolve();
                 };
 
@@ -193,7 +193,7 @@ class BrowserLogsMCPServer {
                 };
 
                 this.eventSource.addEventListener('connected', (event) => {
-                    console.log('🌊 SSE client connected');
+                    console.error('🌊 SSE client connected');
                 });
 
                 this.eventSource.addEventListener('new_logs', (event) => {
@@ -271,7 +271,7 @@ class BrowserLogsMCPServer {
         const hostData = this.hostStatus.get(cacheKey);
         hostData.namespaces.set(namespace, logs);
 
-        console.log(`📋 Loaded ${logs.length} initial logs for ${app}@${host}/${namespace}`);
+        console.error(`📋 Loaded ${logs.length} initial logs for ${app}@${host}/${namespace}`);
     }
 
     async getLogsViaSSE(app, host, namespace, options = {}) {
@@ -466,20 +466,20 @@ class BrowserLogsMCPServer {
     }
 
     async run() {
-        console.log('🚀 Browser Logs MCP Server (SSE) starting...');
-        console.log('📋 Providing get_logs tool for frontend log access via SSE streaming');
+        console.error('🚀 Browser Logs MCP Server (SSE) starting...');
+        console.error('📋 Providing get_logs tool for frontend log access via SSE streaming');
 
         if (this.defaultApp) {
-            console.log(`🎯 Default app filter: ${this.defaultApp}`);
+            console.error(`🎯 Default app filter: ${this.defaultApp}`);
         }
 
-        console.log('🌊 Connecting to SSE stream: http://localhost:22345/api/logs/stream');
-        console.log('🔗 Backend status: http://localhost:22345/api/logs/status');
+        console.error('🌊 Connecting to SSE stream: http://localhost:22345/api/logs/stream');
+        console.error('🔗 Backend status: http://localhost:22345/api/logs/status');
 
         try {
             // Establish SSE connection
             await this.connectSSE();
-            console.log('✅ SSE connection established successfully');
+            console.error('✅ SSE connection established successfully');
         } catch (error) {
             console.error('⚠️  Warning: Could not establish SSE connection, will fall back to HTTP');
         }
@@ -492,7 +492,7 @@ class BrowserLogsMCPServer {
     shutdown() {
         if (this.eventSource) {
             this.eventSource.close();
-            console.log('SSE connection closed');
+            console.error('SSE connection closed');
         }
     }
 }
